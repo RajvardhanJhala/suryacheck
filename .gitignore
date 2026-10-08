@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.aws-sam/
+node_modules/
+frontend/dist/
+.env
+*.local.json
+.claude/
+samconfig.local.toml
