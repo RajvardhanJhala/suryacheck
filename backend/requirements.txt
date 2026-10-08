@@ -1,0 +1,1 @@
+# Runtime deps for the zip-packaged api Lambda (boto3 is provided by Lambda).
