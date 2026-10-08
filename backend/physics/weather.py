@@ -20,6 +20,11 @@ _FIELDS = {
 
 def fetch_hourly(lat, lon, past_days=92, forecast_days=1, timeout=20):
     """Hourly frame indexed by tz-aware hour-ending timestamps in IST."""
+    return parse_hourly(fetch_payload(lat, lon, past_days, forecast_days, timeout))
+
+
+def fetch_payload(lat, lon, past_days=92, forecast_days=1, timeout=20):
+    """Raw Open-Meteo JSON (cacheable)."""
     params = {
         "latitude": round(lat, 4),
         "longitude": round(lon, 4),
@@ -31,8 +36,7 @@ def fetch_hourly(lat, lon, past_days=92, forecast_days=1, timeout=20):
     }
     url = FORECAST_URL + "?" + urllib.parse.urlencode(params)
     with urllib.request.urlopen(url, timeout=timeout) as resp:
-        payload = json.load(resp)
-    return parse_hourly(payload)
+        return json.load(resp)
 
 
 def parse_hourly(payload):

@@ -2,6 +2,14 @@ AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: SuryaCheck - rooftop solar underperformance diagnosis (Environmental Hacks 2026)
 
+Parameters:
+  ModelVision:
+    Type: String
+    Default: in.anthropic.claude-haiku-4-5-20251001-v1:0
+  ModelAgent:
+    Type: String
+    Default: in.anthropic.claude-haiku-4-5-20251001-v1:0
+
 Globals:
   Function:
     Architectures: [x86_64]
@@ -12,8 +20,46 @@ Globals:
     Environment:
       Variables:
         POWERTOOLS_SERVICE_NAME: suryacheck
+        TABLE_NAME: !Ref Table
+        MODEL_VISION: !Ref ModelVision
+        MODEL_AGENT: !Ref ModelAgent
 
 Resources:
+  Table:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - { AttributeName: PK, AttributeType: S }
+        - { AttributeName: SK, AttributeType: S }
+        - { AttributeName: GSI1PK, AttributeType: S }
+        - { AttributeName: GSI1SK, AttributeType: S }
+      KeySchema:
+        - { AttributeName: PK, KeyType: HASH }
+        - { AttributeName: SK, KeyType: RANGE }
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - { AttributeName: GSI1PK, KeyType: HASH }
+            - { AttributeName: GSI1SK, KeyType: RANGE }
+          Projection: { ProjectionType: ALL }
+      TimeToLiveSpecification: { AttributeName: ttl, Enabled: true }
+
+  UploadBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - { Id: expire-screenshots, Status: Enabled, ExpirationInDays: 7 }
+      CorsConfiguration:
+        CorsRules:
+          - { AllowedMethods: [POST], AllowedOrigins: ["*"], AllowedHeaders: ["*"], MaxAge: 3000 }
+
   HttpApi:
     Type: AWS::Serverless::HttpApi
     Properties:
@@ -24,6 +70,10 @@ Resources:
       DefaultRouteSettings:
         ThrottlingBurstLimit: 10
         ThrottlingRateLimit: 5
+      RouteSettings:
+        "POST /sites": { ThrottlingBurstLimit: 2, ThrottlingRateLimit: 1 }
+        "POST /sites/{site_id}/extractions": { ThrottlingBurstLimit: 3, ThrottlingRateLimit: 1 }
+        "POST /sites/{site_id}/analyses": { ThrottlingBurstLimit: 3, ThrottlingRateLimit: 1 }
 
   ApiFunction:
     Type: AWS::Serverless::Function
@@ -31,13 +81,29 @@ Resources:
       CodeUri: backend/
       Handler: api.app.handler
       Runtime: python3.13
+      Timeout: 29
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref UploadBucket
+          AGENT_FUNCTION: !Ref AgentFunction
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref Table }
+        - S3CrudPolicy: { BucketName: !Ref UploadBucket }
+        - LambdaInvokePolicy: { FunctionName: !Ref AgentFunction }
+        - Statement:
+            - Effect: Allow
+              Action: [bedrock:InvokeModel, bedrock:Converse]
+              Resource: "*"
       Events:
-        Health:
-          Type: HttpApi
-          Properties:
-            ApiId: !Ref HttpApi
-            Path: /health
-            Method: GET
+        Health:        { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: /health, Method: GET } }
+        CreateSite:    { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: /sites, Method: POST } }
+        GetSite:       { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}", Method: GET } }
+        Uploads:       { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/uploads", Method: POST } }
+        Extractions:   { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/extractions", Method: POST } }
+        Readings:      { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/readings", Method: PUT } }
+        SiteEvents:    { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/events", Method: POST } }
+        StartAnalysis: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/analyses", Method: POST } }
+        GetAnalysis:   { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/analyses/{analysis_id}", Method: GET } }
 
   AgentFunction:
     Type: AWS::Serverless::Function
@@ -45,6 +111,12 @@ Resources:
       PackageType: Image
       Timeout: 120
       MemorySize: 1536
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref Table }
+        - Statement:
+            - Effect: Allow
+              Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream, bedrock:Converse, bedrock:ConverseStream]
+              Resource: "*"
     Metadata:
       DockerContext: ./backend
       Dockerfile: agent/Dockerfile
@@ -65,3 +137,7 @@ Resources:
 Outputs:
   ApiUrl:
     Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
+  TableName:
+    Value: !Ref Table
+  BucketName:
+    Value: !Ref UploadBucket

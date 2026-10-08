@@ -1,1 +1,5 @@
 # Runtime deps for the zip-packaged api Lambda (boto3 is provided by Lambda).
+# Built with `sam build --use-container` so native wheels (Pillow, cedarpy) match Lambda Linux.
+aws-lambda-powertools>=3.0
+cedarpy>=4.0
+pillow>=11

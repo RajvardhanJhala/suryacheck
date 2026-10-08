@@ -28,3 +28,9 @@
 ## 2026-10-08: Bedrock is blocked by new-account verification
 - Every Claude and Nova model returns `AccessDeniedException: Your account is currently being verified`. Re-check with `scripts/check_bedrock.py`.
 - India-only inference profiles exist (`in.anthropic.claude-haiku-4-5-20251001-v1:0`, `in.anthropic.claude-sonnet-5`). Prefer them so data stays in India.
+
+## 2026-10-08: Phase 2 data layer is live
+- Neighbours: each site's META item carries `pi_norm_series` (the last 60 high-confidence days) and `GSI1PK=GEO#<geohash5>`. Finding neighbours is one GSI query per analysis, instead of one per day as planned. It gives the same comparison with fewer reads.
+- Weather: Open-Meteo is cached per geohash5 cell per day as a gzipped payload (`WX#<cell>` / `FETCH#<date>`, 2-day TTL), so there is one external call per neighbourhood per day.
+- The api Lambda is built with `sam build --use-container`, so the Pillow and cedarpy wheels are Linux builds.
+- E2E (`scripts/e2e.py`): synthetic dust from Sep 20 at 0.75%/day on real weather → **SOILING, ₹294/month, CLEAN_PANELS**, with the analysis done in 9 s. The PLAN.md band of ₹320–420 was a guess; the demo seed will use the code's own number.
