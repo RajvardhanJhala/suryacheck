@@ -1,0 +1,7 @@
+pvlib>=0.16
+pandas>=2.2
+numpy>=2.0
+scipy>=1.14
+cedarpy>=4.0
+strands-agents>=1.0
+aws-lambda-powertools>=3.0

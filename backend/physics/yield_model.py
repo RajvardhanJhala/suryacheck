@@ -50,6 +50,9 @@ def expected_daily(hourly, lat, lon, capacity_kwp, tilt=23.0, azimuth=180.0):
         "cloud_pct": hourly["cloud_cover"][daylight].groupby(day[daylight.values]).mean(),
         "rain_mm": hourly["precipitation"].groupby(day).sum(),
     })
+    # Drop partial days at the edges of the request (fewer than 24 hourly values).
+    hours = pd.Series(1, index=hourly.index).groupby(day).sum()
+    daily = daily.loc[hours[hours >= 24].index]
     daily.index = pd.to_datetime(daily.index)
     daily["cloud_pct"] = daily["cloud_pct"].fillna(100.0)
     daily["low_conf"] = (

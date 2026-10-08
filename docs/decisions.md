@@ -18,3 +18,13 @@
 ## 2026-10-08: Cedar is the action gate
 - `backend/policies/actions.cedar` mirrors `rules.ACTIONS`. `tests/test_authz.py` checks the full verdict × action × loss matrix.
 - Extra rule: a simulated site can never message a real phone number.
+
+## 2026-10-08: Agent container is deployed (risk R3 cleared)
+- The image is `public.ecr.aws/lambda/python:3.13` with pvlib 0.16.1, pandas, scipy, Strands, cedarpy and Powertools. It is about 1.4 GB, built with Docker Desktop (WSL2) and deployed with `sam deploy --resolve-image-repos`.
+- A cold start takes about 14 s, which is acceptable because analyses run asynchronously (202 + polling).
+- Fixed: Open-Meteo hours are hour-ending, so the first day of a request was partial and showed 0 kWh, which would look like a fake inverter trip. Days with fewer than 24 hourly values are now dropped.
+- Runtime is Python 3.13 throughout, to match the local interpreter that `sam build` uses.
+
+## 2026-10-08: Bedrock is blocked by new-account verification
+- Every Claude and Nova model returns `AccessDeniedException: Your account is currently being verified`. Re-check with `scripts/check_bedrock.py`.
+- India-only inference profiles exist (`in.anthropic.claude-haiku-4-5-20251001-v1:0`, `in.anthropic.claude-sonnet-5`). Prefer them so data stays in India.

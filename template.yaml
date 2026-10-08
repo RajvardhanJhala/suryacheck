@@ -4,7 +4,6 @@ Description: SuryaCheck - rooftop solar underperformance diagnosis (Environmenta
 
 Globals:
   Function:
-    Runtime: python3.13
     Architectures: [x86_64]
     Timeout: 25
     MemorySize: 512
@@ -31,6 +30,7 @@ Resources:
     Properties:
       CodeUri: backend/
       Handler: api.app.handler
+      Runtime: python3.13
       Events:
         Health:
           Type: HttpApi
@@ -38,6 +38,23 @@ Resources:
             ApiId: !Ref HttpApi
             Path: /health
             Method: GET
+
+  AgentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      Timeout: 120
+      MemorySize: 1536
+    Metadata:
+      DockerContext: ./backend
+      Dockerfile: agent/Dockerfile
+      DockerTag: python3.13-v1
+
+  AgentLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${AgentFunction}
+      RetentionInDays: 7
 
   ApiLogGroup:
     Type: AWS::Logs::LogGroup
