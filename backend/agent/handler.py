@@ -41,4 +41,9 @@ def handler(event, context):
                 ExpressionAttributeNames={"#s": "status", "#e": "error"},
                 ExpressionAttributeValues={":f": "FAILED", ":e": f"{type(e).__name__}: {e}"[:500]})
             return {"error": traceback.format_exc()[-500:]}
+    if mode == "recheck":
+        from agent.recheck_job import run_recheck
+        a = run_recheck(event["site_id"], event["action_id"])
+        logger.info("recheck done", extra={"site_id": event["site_id"], "outcome": (a or {}).get("outcome")})
+        return {"outcome": (a or {}).get("outcome"), "result": (a or {}).get("recheck_result")}
     raise ValueError(f"unknown mode {mode}")

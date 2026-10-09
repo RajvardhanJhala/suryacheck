@@ -82,6 +82,17 @@ def test_cleaning_recovers_soiling():
     assert res["outcome"] == RECOVERED and res["recovered_inr_month"] > 0
 
 
+def test_recovered_money_never_exceeds_the_loss():
+    exp = expected()
+    site = make_site(exp, seed=8, baseline=0.98, soiling_rate=0.0075, extra_resets=["2026-10-05"], noise=0.0)
+    site.loc[site.index > "2026-10-05", "kwh_actual"] *= 1.08          # a lucky post-clean week
+    pre = compute_performance(site, "2026-10-04")
+    res = evaluate_recheck(site, "2026-10-04", pre.baseline_pi, pre.med3_latest, AS_OF,
+                           monthly_loss_inr=pre.monthly_loss_inr)
+    assert res["post_pi_norm"] > 1.0
+    assert res["recovered_inr_month"] == pre.monthly_loss_inr      # fully recovered, never more
+
+
 def test_recheck_waits_for_data():
     exp = expected()
     site = make_site(exp, seed=9)

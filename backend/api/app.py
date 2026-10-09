@@ -1,7 +1,10 @@
 """HTTP API (Powertools router). Every route validates input; Bedrock-backed routes are capped."""
+import hashlib
+import hmac
 import json
 import os
 import re
+import urllib.parse
 import uuid
 from datetime import date, datetime, timedelta
 
@@ -219,6 +222,72 @@ def get_analysis(site_id, analysis_id):
     if not a:
         raise NotFoundError("Unknown analysis")
     return {k: v for k, v in a.items() if k not in ("PK", "SK")}
+
+
+def _whatsapp(action, site, a):
+    exp = a.get("explanation") or {}
+    lines = [f"SuryaCheck report ({a['as_of']}, {site['capacity_kwp']:g} kWp rooftop solar)",
+             exp.get("headline", ""), *a.get("evidence", [])]
+    if action == "CLEAN_PANELS":
+        text = "\n".join(lines + ["Can you clean my solar panels? Early morning, wet cloth, no pressure jet please."])
+        return "https://wa.me/?text=" + urllib.parse.quote(text)
+    if action == "MESSAGE_INSTALLER":
+        text = "\n".join(lines + ["Please inspect the system (possible string/MPPT/inverter fault). "
+                                  "Is this covered under the maintenance contract?"])
+        phone = (site.get("installer_phone") or "").lstrip("+")
+        return f"https://wa.me/{phone}?text=" + urllib.parse.quote(text)
+    return None
+
+
+@app.post("/sites/<site_id>/actions")
+def create_action(site_id):
+    """The agent proposes; Cedar decides. Idempotent per (analysis, action)."""
+    from shared.authz import is_action_allowed
+    from shared.scheduling import schedule_recheck
+    site = _site(site_id)
+    b = _body()
+    analysis_id, action = str(b.get("analysisId", "")), str(b.get("action", ""))
+    a = ddb.get(ddb.site_pk(site_id), f"ANALYSIS#{analysis_id}")
+    if not a or a.get("status") != "DONE":
+        raise NotFoundError("Unknown or unfinished analysis")
+    allowed, reasons = is_action_allowed(action, {"id": analysis_id, "verdict": a["verdict"],
+                                                  "monthly_loss_inr": a["monthly_loss_inr"]}, site)
+    if not allowed:
+        logger.warning("action denied by Cedar", extra={"verdict": a["verdict"], "action": action})
+        return Response(403, "application/json", json.dumps(
+            {"error": f"{action} is not allowed for a {a['verdict']} diagnosis", "policy": "actions.cedar"}))
+
+    action_id = hashlib.sha256(f"{analysis_id}:{action}".encode()).hexdigest()[:16]
+    existing = ddb.get(ddb.site_pk(site_id), f"ACTION#{action_id}")
+    if existing:                                    # double tap -> same action, no second schedule
+        return {k: v for k, v in existing.items() if k != "PK"} | {"actionId": action_id}
+    perf = a["performance"]
+    item = {"PK": ddb.site_pk(site_id), "SK": f"ACTION#{action_id}", "type": action, "analysis_id": analysis_id,
+            "verdict": a["verdict"], "as_of": a["as_of"], "baseline_at_action": perf["baseline_pi"],
+            "pre_pi_norm": perf["med3_latest"], "monthly_loss_inr": a["monthly_loss_inr"],
+            "whatsapp_url": _whatsapp(action, site, a), "outcome": "PENDING" if a.get("recheck_days") else "NONE",
+            "created_at": datetime.utcnow().isoformat(), "cedar_reasons": reasons}
+    if a.get("recheck_days"):
+        item["schedule_name"], item["recheck_at"] = schedule_recheck(site_id, action_id, a["recheck_days"])
+    ddb.put(item)
+    return Response(201, "application/json", json.dumps({**{k: v for k, v in item.items() if k != "PK"},
+                                                         "actionId": action_id}, default=str))
+
+
+@app.post("/sites/<site_id>/actions/<action_id>/recheck")
+def demo_recheck(site_id, action_id):
+    """Demo only: run the scheduled recheck now. Hidden (404) unless DEMO_MODE and the key match."""
+    key = app.current_event.get_header_value("x-demo-key") or ""
+    if os.environ.get("DEMO_MODE") != "true" or not key or not hmac.compare_digest(key, os.environ.get("DEMO_KEY", "")):
+        raise NotFoundError("Not found")
+    _site(site_id)
+    try:
+        caps.take_global("rechecks_manual")
+    except caps.CapExceeded:
+        return _too_many("manual rechecks")
+    resp = lam.invoke(FunctionName=AGENT_FN, Payload=json.dumps(
+        {"mode": "recheck", "site_id": site_id, "action_id": action_id}).encode())
+    return json.loads(resp["Payload"].read())
 
 
 @logger.inject_lambda_context

@@ -9,6 +9,16 @@ Parameters:
   ModelAgent:
     Type: String
     Default: in.anthropic.claude-haiku-4-5-20251001-v1:0
+  DemoMode:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+  DemoKey:
+    Type: String
+    NoEcho: true
+  RecheckDelayMinutes:
+    Type: String
+    Default: "3"
 
 Globals:
   Function:
@@ -23,6 +33,13 @@ Globals:
         TABLE_NAME: !Ref Table
         MODEL_VISION: !Ref ModelVision
         MODEL_AGENT: !Ref ModelAgent
+        DEMO_MODE: !Ref DemoMode
+        RECHECK_DELAY_MINUTES: !If [IsDemo, !Ref RecheckDelayMinutes, "0"]
+        AGENT_FUNCTION_ARN: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:suryacheck-agent
+        SCHEDULER_ROLE_ARN: !GetAtt SchedulerRole.Arn
+
+Conditions:
+  IsDemo: !Equals [!Ref DemoMode, "true"]
 
 Resources:
   Table:
@@ -86,7 +103,15 @@ Resources:
         Variables:
           BUCKET_NAME: !Ref UploadBucket
           AGENT_FUNCTION: !Ref AgentFunction
+          DEMO_KEY: !Ref DemoKey
       Policies:
+        - Statement:
+            - Effect: Allow
+              Action: [scheduler:CreateSchedule]
+              Resource: !Sub arn:aws:scheduler:${AWS::Region}:${AWS::AccountId}:schedule/default/recheck-*
+            - Effect: Allow
+              Action: [iam:PassRole]
+              Resource: !GetAtt SchedulerRole.Arn
         - DynamoDBCrudPolicy: { TableName: !Ref Table }
         - S3CrudPolicy: { BucketName: !Ref UploadBucket }
         - LambdaInvokePolicy: { FunctionName: !Ref AgentFunction }
@@ -104,15 +129,25 @@ Resources:
         SiteEvents:    { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/events", Method: POST } }
         StartAnalysis: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/analyses", Method: POST } }
         GetAnalysis:   { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/analyses/{analysis_id}", Method: GET } }
+        CreateAction:  { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/actions", Method: POST } }
+        DemoRecheck:   { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/actions/{action_id}/recheck", Method: POST } }
 
   AgentFunction:
     Type: AWS::Serverless::Function
     Properties:
+      FunctionName: suryacheck-agent
       PackageType: Image
       Timeout: 120
       MemorySize: 1536
       Policies:
         - DynamoDBCrudPolicy: { TableName: !Ref Table }
+        - Statement:
+            - Effect: Allow
+              Action: [scheduler:CreateSchedule]
+              Resource: !Sub arn:aws:scheduler:${AWS::Region}:${AWS::AccountId}:schedule/default/recheck-*
+            - Effect: Allow
+              Action: [iam:PassRole]
+              Resource: !GetAtt SchedulerRole.Arn
         - Statement:
             - Effect: Allow
               Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream, bedrock:Converse, bedrock:ConverseStream]
@@ -121,6 +156,25 @@ Resources:
       DockerContext: ./backend
       Dockerfile: agent/Dockerfile
       DockerTag: python3.13-v1
+
+  SchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: scheduler.amazonaws.com }
+            Action: sts:AssumeRole
+            Condition: { StringEquals: { aws:SourceAccount: !Ref AWS::AccountId } }
+      Policies:
+        - PolicyName: invoke-agent
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:suryacheck-agent
 
   AgentLogGroup:
     Type: AWS::Logs::LogGroup

@@ -34,3 +34,14 @@
 - Weather: Open-Meteo is cached per geohash5 cell per day as a gzipped payload (`WX#<cell>` / `FETCH#<date>`, 2-day TTL), so there is one external call per neighbourhood per day.
 - The api Lambda is built with `sam build --use-container`, so the Pillow and cedarpy wheels are Linux builds.
 - E2E (`scripts/e2e.py`): synthetic dust from Sep 20 at 0.75%/day on real weather → **SOILING, ₹294/month, CLEAN_PANELS**, with the analysis done in 9 s. The PLAN.md band of ₹320–420 was a guess; the demo seed will use the code's own number.
+
+## 2026-10-09: Actions, recheck and demo seed (Bedrock still blocked)
+- `POST /actions`: the Cedar gate (403 when denied), then an idempotent action ID (a hash of the analysis and the action, so a double tap returns the same action), a `wa.me` link, and a one-time EventBridge Scheduler recheck (`ActionAfterCompletion=DELETE`).
+- The recheck measures from the cleaning day itself, because cleaning happens in the morning. When it is still WAITING, it re-arms once under a new schedule name; a ConflictException is treated as success.
+- Recovered ₹ = the loss shown at action time × the share of the gap closed (capped at the baseline), so "recovered" can never exceed "lost". The seed run showed lost ₹222 → recovered ₹222.
+- The demo seed (`scripts/seed_demo.py`) uses real weather and simulated performance, and all 8 built-in checks pass:
+  - Hemant: SOILING, ₹294/month → CLEAN_PANELS;
+  - Meera: FAULT, ₹539/month → MESSAGE_INSTALLER, and Cedar returns 403 for CLEAN_PANELS;
+  - Replay: dust at 0.9%/day (within the 1%/day cap) → ₹222/month → CLEAN_PANELS → RECOVERED.
+- On the first seed attempt the replay loss was ₹166, under the ₹200 cleaning cost, so the rules and Cedar correctly chose WAIT. That was a timeline problem in the demo story, not a bug.
+- When Bedrock is unavailable, `physics/explain.py` builds the headline, the "why" and the "what to do" from computed numbers only.

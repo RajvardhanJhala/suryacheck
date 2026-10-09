@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pandas as pd
 
 from physics import rules
+from physics.explain import explain
 from physics.performance import compute_performance, peer_compare
 from physics.weather import fetch_payload, parse_hourly
 from physics.yield_model import expected_daily
@@ -81,13 +82,16 @@ def run_analysis(site_id, analysis_id, as_of=None, window_days=45):
 
     verdict = result["verdict_code"]
     candidates = result["tie_candidates"] or [verdict]
+    action = result["allowed_actions"][candidates[0]][0]
     analysis = {
         "PK": ddb.site_pk(site_id), "SK": f"ANALYSIS#{analysis_id}",
         "status": "DONE", "as_of": perf.as_of, "window_days": window_days,
         "verdict": verdict, "verdict_source": "code",
         "tie_candidates": result["tie_candidates"],
         "allowed_actions": result["allowed_actions"],
-        "action": result["allowed_actions"][candidates[0]][0],
+        "action": action,
+        "explanation": explain(verdict, action, result["monthly_loss_inr"], result["evidence"]),
+        "explanation_source": "template",
         "recheck_days": result["recheck_days"],
         "scores": result["scores"], "evidence": result["evidence"],
         "monthly_loss_inr": result["monthly_loss_inr"], "window_loss_inr": result["window_loss_inr"],
