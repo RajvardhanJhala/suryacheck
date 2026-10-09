@@ -137,7 +137,12 @@ def extract(site_id):
         caps.take_site_bedrock(site_id)
     except caps.CapExceeded:
         return _too_many("screenshot reading (please type the numbers in)")
-    return extract_rows(BUCKET, keys)
+    try:
+        return extract_rows(BUCKET, keys)
+    except Exception:
+        logger.exception("extraction failed")
+        return Response(503, "application/json", json.dumps(
+            {"error": "Reading photos is unavailable right now. Please type the numbers in.", "fallback": "manual"}))
 
 
 @app.put("/sites/<site_id>/readings")
@@ -171,6 +176,40 @@ def put_readings(site_id):
             w.put_item(Item=ddb.to_ddb({"PK": ddb.site_pk(site_id), "SK": f"DAY#{d}", "kwh_actual": kwh,
                                         "source": source}))
     return {"saved": len(clean), "rejected": rejected}
+
+
+@app.post("/sites/<site_id>/meter")
+def add_meter_reading(site_id):
+    """A cumulative generation-meter reading. Two readings a few days apart give the average
+    daily generation in between, written as DAY rows (source=meter)."""
+    site = _site(site_id)
+    b = _body()
+    try:
+        d = date.fromisoformat(str(b.get("date")))
+    except ValueError:
+        raise BadRequestError("date must be YYYY-MM-DD")
+    if d > _today_ist():
+        raise BadRequestError("date is in the future")
+    total = _num(b, "total_kwh", 0, 10_000_000)
+    pk = ddb.site_pk(site_id)
+    prev = [m for m in ddb.query_prefix(pk, "METER#") if m["SK"][6:] < d.isoformat()]
+    ddb.put({"PK": pk, "SK": f"METER#{d.isoformat()}", "total_kwh": total})
+    if not prev:
+        return {"saved_days": 0, "message": "First meter reading saved. Take another photo in a few days."}
+    last = max(prev, key=lambda m: m["SK"])
+    gap = (d - date.fromisoformat(last["SK"][6:])).days
+    delta = total - last["total_kwh"]
+    if delta < 0:
+        raise BadRequestError("This reading is lower than the previous one. Please check the photo.")
+    per_day = delta / gap
+    if gap > 31 or per_day > site["capacity_kwp"] * 7.5:
+        raise BadRequestError("Readings are too far apart or too high to split into days.")
+    with ddb.table().batch_writer() as w:
+        for i in range(1, gap + 1):
+            day = (date.fromisoformat(last["SK"][6:]) + timedelta(days=i)).isoformat()
+            w.put_item(Item=ddb.to_ddb({"PK": pk, "SK": f"DAY#{day}", "kwh_actual": round(per_day, 2),
+                                        "source": "meter", "averaged_over_days": gap}))
+    return {"saved_days": gap, "avg_kwh_per_day": round(per_day, 2)}
 
 
 @app.post("/sites/<site_id>/events")

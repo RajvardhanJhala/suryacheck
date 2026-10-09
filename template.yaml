@@ -126,6 +126,7 @@ Resources:
         Uploads:       { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/uploads", Method: POST } }
         Extractions:   { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/extractions", Method: POST } }
         Readings:      { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/readings", Method: PUT } }
+        MeterReading:  { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/meter", Method: POST } }
         SiteEvents:    { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/events", Method: POST } }
         StartAnalysis: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/analyses", Method: POST } }
         GetAnalysis:   { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/analyses/{analysis_id}", Method: GET } }

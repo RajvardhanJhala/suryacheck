@@ -15,11 +15,14 @@ MAX_BYTES, MAX_SIDE = int(3.5 * 1024 * 1024), 7900
 s3 = boto3.client("s3")
 bedrock = boto3.client("bedrock-runtime")
 
-PROMPT = f"""These images are consecutive parts of ONE screenshot from a rooftop-solar inverter app
-(or a photo of a solar generation meter). Extract the daily energy generation values.
+PROMPT = f"""These images are consecutive parts of ONE screenshot from a rooftop-solar inverter app,
+or a phone-camera photo of an inverter display or a solar generation meter. Extract the energy values.
 
 Rules:
-- Return ONLY JSON: {{"view": "daily_list|month_chart|single_day|meter|unknown", "rows": [{{"date": "YYYY-MM-DD", "kwh": number}}], "warnings": [string]}}
+- Return ONLY JSON: {{"view": "daily_list|month_chart|single_day|meter|unknown", "rows": [{{"date": "YYYY-MM-DD", "kwh": number}}], "meter_total_kwh": number or null, "warnings": [string]}}
+- A generation meter shows a cumulative total (e.g. 04512.6 kWh): put it in meter_total_kwh and leave rows empty.
+- An inverter display showing today's energy (E-Today, Today, Daily): one row with today's date, {date.today().isoformat()}.
+- If the photo is blurry, glared or cut off, return no value and say so in warnings.
 - Tiles overlap: include each date once.
 - If the year is not shown, assume {date.today().year}. If only day numbers are shown, use the month in the header.
 - Read values only where a number is printed. Never estimate a value from bar heights; add a warning instead.
@@ -49,7 +52,11 @@ def _parse(text):
         except (KeyError, TypeError, ValueError):
             continue
     rows = sorted({r["date"]: r for r in rows}.values(), key=lambda r: r["date"])
-    return {"view": data.get("view", "unknown"), "rows": rows,
+    try:
+        meter = float(data["meter_total_kwh"]) if data.get("meter_total_kwh") is not None else None
+    except (TypeError, ValueError):
+        meter = None
+    return {"view": data.get("view", "unknown"), "rows": rows, "meter_total_kwh": meter,
             "warnings": [str(w)[:200] for w in data.get("warnings", [])][:10]}
 
 
