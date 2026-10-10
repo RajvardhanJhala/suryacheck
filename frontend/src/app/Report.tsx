@@ -9,6 +9,7 @@ import { Icon } from '../ui/icons'
 import { Badge, Button, Card, Notice, Reading } from '../ui/primitives'
 import { useSite } from './siteContext'
 import { Screen } from './States'
+import { PhotoResult } from './NewCheck'
 
 const ACTION_LABEL: Record<string, string> = {
   CLEAN_PANELS: 'Ask a cleaner on WhatsApp', MESSAGE_INSTALLER: 'Send the evidence to my installer',
@@ -150,10 +151,16 @@ export default function Report() {
             <Card>
               <h2 className="h3">Panel photos</h2>
               {view.panelPhotos?.length ? (
-                <div className="photos">{view.panelPhotos.map((p) => <img key={p.url} src={p.url} alt={`Panel photo taken ${new Date(p.taken).toLocaleDateString('en-IN')}`} loading="lazy" />)}</div>
-              ) : <p className="muted">No panel photos with this check.</p>}
-              <Notice tone="info" title="Visual soiling estimate: coming soon">Our image classifier for panel photos is still in training,
-                so photos are stored with your report but not scored yet. The dust verdict above comes from your measured output.</Notice>
+                <div className="photos">{view.panelPhotos.map((p) => (
+                  <figure key={p.url} className="photo">
+                    <img src={p.url} alt={`Panel photo taken ${new Date(p.taken).toLocaleDateString('en-IN')}`} loading="lazy" />
+                    {p.classification && <ul className="seen"><PhotoResult cls={p.classification} note="" /></ul>}
+                  </figure>
+                ))}</div>
+              ) : <p className="muted">No panel photos with this check. Use the smart camera in New check.</p>}
+              <Notice tone="info" title="Visual check: an estimate, never the verdict">Photos are checked by an open image model (CLIP, run on
+                our own AWS Lambda) and by Amazon Rekognition. A condition is shown only when the model is confident; the dust verdict above
+                always comes from your measured output.</Notice>
             </Card>
 
             <details className="card method">

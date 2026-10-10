@@ -1,0 +1,4 @@
+# Only the vision image builds from the repo root; send it nothing but its own files.
+*
+!backend/vision/
+!ml/models/clip/onnx/vision_model_quantized.onnx

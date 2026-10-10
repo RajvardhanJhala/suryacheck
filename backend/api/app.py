@@ -28,7 +28,9 @@ AGENT_FN = os.environ.get("AGENT_FUNCTION", "")
 MAX_TILE_BYTES = int(3.75 * 1024 * 1024)
 MAX_TILES = 8
 SITE_ID_RE = re.compile(r"^[a-z0-9]{12}$")
-KINDS = ("inverter_screenshot", "inverter_photo", "meter_photo", "panel_photo")
+KINDS = ("inverter_screenshot", "inverter_photo", "meter_photo", "panel_photo", "camera")
+VISION_FN = os.environ.get("VISION_FUNCTION", "")
+rekognition = boto3.client("rekognition")
 
 
 def _body():
@@ -134,10 +136,40 @@ def _panel_photos(site_id, limit=6):
     """Latest panel photos as short-lived links (the bucket keeps uploads for 7 days)."""
     if not BUCKET:
         return []
-    objs = s3.list_objects_v2(Bucket=BUCKET, Prefix=f"uploads/{site_id}/panel_photo/").get("Contents", [])
+    results = {r["SK"][6:]: r for r in ddb.query_prefix(ddb.site_pk(site_id), "PHOTO#")}
+    objs = [o for prefix in ("panel_photo", "camera")
+            for o in s3.list_objects_v2(Bucket=BUCKET, Prefix=f"uploads/{site_id}/{prefix}/").get("Contents", [])
+            if prefix == "panel_photo" or results.get(o["Key"], {}).get("kind") == "panel"]
     objs = sorted(objs, key=lambda o: o["LastModified"], reverse=True)[:limit]
     return [{"url": s3.generate_presigned_url("get_object", Params={"Bucket": BUCKET, "Key": o["Key"]}, ExpiresIn=3600),
-             "taken": o["LastModified"].isoformat()} for o in objs]
+             "taken": o["LastModified"].isoformat(), "key": o["Key"],
+             "classification": {k: v for k, v in results.get(o["Key"], {}).items() if k not in ("PK", "SK")} or None}
+            for o in objs]
+
+
+@app.post("/sites/<site_id>/photos/classify")
+def classify_photo(site_id):
+    """CLIP (own Lambda) says what the photo is and, for panels, its condition; Amazon
+    Rekognition independently checks for solar panels. Stored per photo; never changes a verdict."""
+    _writable(site_id)
+    key = str(_body().get("key", ""))
+    if not key.startswith(f"uploads/{site_id}/"):
+        raise BadRequestError("key must be an upload for this site")
+    try:
+        caps.take_global("classifications")
+    except caps.CapExceeded:
+        return _too_many("photo checks")
+    resp = lam.invoke(FunctionName=VISION_FN, Payload=json.dumps({"bucket": BUCKET, "key": key}).encode())
+    result = json.loads(resp["Payload"].read())
+    if resp.get("FunctionError"):
+        logger.error("vision failed", extra={"error": result})
+        return Response(503, "application/json", json.dumps({"error": "Photo check is unavailable right now."}))
+    labels = rekognition.detect_labels(Image={"S3Object": {"Bucket": BUCKET, "Name": key}}, MaxLabels=15, MinConfidence=60)["Labels"]
+    solar = next((l["Confidence"] for l in labels if l["Name"] in ("Solar Panels", "Solar Panel")), None)
+    result["rekognition"] = {"solar_panels": round(solar, 1) if solar else None,
+                             "labels": [l["Name"] for l in labels[:6]]}
+    ddb.put({"PK": ddb.site_pk(site_id), "SK": f"PHOTO#{key}", **result, "classified_at": datetime.utcnow().isoformat()})
+    return result
 
 
 @app.get("/sites/<site_id>/analyses")
@@ -177,7 +209,7 @@ def extract(site_id):
     keys, kind = b.get("keys") or [], b.get("kind", "inverter_screenshot")
     if kind not in KINDS[:3]:
         raise BadRequestError("kind must be inverter_screenshot, inverter_photo or meter_photo")
-    if not keys or len(keys) > MAX_TILES or not all(str(k).startswith(f"uploads/{site_id}/{kind}/") for k in keys):
+    if not keys or len(keys) > MAX_TILES or not all(str(k).startswith(f"uploads/{site_id}/") for k in keys):
         raise BadRequestError(f"keys must be 1-{MAX_TILES} upload keys for this site")
     try:
         caps.take_global("extractions")

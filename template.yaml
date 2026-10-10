@@ -103,6 +103,7 @@ Resources:
         Variables:
           BUCKET_NAME: !Ref UploadBucket
           AGENT_FUNCTION: !Ref AgentFunction
+          VISION_FUNCTION: !Ref VisionFunction
           DEMO_KEY: !Ref DemoKey
       Policies:
         - Statement:
@@ -115,6 +116,8 @@ Resources:
         - DynamoDBCrudPolicy: { TableName: !Ref Table }
         - S3CrudPolicy: { BucketName: !Ref UploadBucket }
         - LambdaInvokePolicy: { FunctionName: !Ref AgentFunction }
+        - LambdaInvokePolicy: { FunctionName: !Ref VisionFunction }
+        - RekognitionDetectOnlyPolicy: {}
         - Statement:
             - Effect: Allow
               Action: [bedrock:InvokeModel, bedrock:Converse, textract:DetectDocumentText, textract:AnalyzeDocument]
@@ -131,6 +134,7 @@ Resources:
         StartAnalysis: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/analyses", Method: POST } }
         ListAnalyses:  { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/analyses", Method: GET } }
         UpdateSite:    { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}", Method: PUT } }
+        ClassifyPhoto: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/photos/classify", Method: POST } }
         GetAnalysis:   { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/analyses/{analysis_id}", Method: GET } }
         CreateAction:  { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/actions", Method: POST } }
         DemoRecheck:   { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/actions/{action_id}/recheck", Method: POST } }
@@ -178,6 +182,25 @@ Resources:
               - Effect: Allow
                 Action: lambda:InvokeFunction
                 Resource: !Sub arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:suryacheck-agent
+
+  VisionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      PackageType: Image
+      Timeout: 30
+      MemorySize: 2048
+      Policies:
+        - S3ReadPolicy: { BucketName: !Ref UploadBucket }
+    Metadata:
+      DockerContext: .
+      Dockerfile: backend/vision/Dockerfile
+      DockerTag: clip-v1
+
+  VisionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${VisionFunction}
+      RetentionInDays: 7
 
   AgentLogGroup:
     Type: AWS::Logs::LogGroup

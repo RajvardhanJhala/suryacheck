@@ -107,3 +107,23 @@
   .app { background: linear-gradient(to right, var(--surface) 247px, var(--line) 247px 248px, transparent 248px); }
   .sidebar { border-right: 0; background: none; }
 }
+
+/* smart camera */
+.camera { display: grid; gap: var(--s-3); margin-block: var(--s-3); }
+.viewfinder { position: relative; aspect-ratio: 4 / 3; border-radius: var(--r-lg); overflow: hidden; background: #14110c; display: grid; place-items: center; }
+.viewfinder video { width: 100%; height: 100%; object-fit: cover; }
+.viewfinder.is-off { color: #e9e1d2; text-align: center; padding: var(--s-5); gap: var(--s-2); align-content: center; }
+.viewfinder.is-off p { max-width: 34ch; margin: 0; }
+.frame { position: absolute; inset: 12%; border-radius: var(--r-md); pointer-events: none;
+  background: linear-gradient(var(--sun), var(--sun)) top left / 28px 3px no-repeat, linear-gradient(var(--sun), var(--sun)) top left / 3px 28px no-repeat,
+    linear-gradient(var(--sun), var(--sun)) top right / 28px 3px no-repeat, linear-gradient(var(--sun), var(--sun)) top right / 3px 28px no-repeat,
+    linear-gradient(var(--sun), var(--sun)) bottom left / 28px 3px no-repeat, linear-gradient(var(--sun), var(--sun)) bottom left / 3px 28px no-repeat,
+    linear-gradient(var(--sun), var(--sun)) bottom right / 28px 3px no-repeat, linear-gradient(var(--sun), var(--sun)) bottom right / 3px 28px no-repeat; }
+.vf-hint { position: absolute; bottom: var(--s-3); left: 0; right: 0; text-align: center; color: #fff; font-size: var(--fs-sm);
+  text-shadow: 0 1px 3px rgb(0 0 0 / .8); margin: 0; }
+.seen { list-style: none; padding: 0; margin: var(--s-3) 0; display: grid; gap: var(--s-2); }
+.photo-result { border-top: 1px solid var(--line); padding-top: var(--s-2); }
+.photo-result p { margin: var(--s-1) 0 0; }
+.photo { margin: 0; }
+.photo .seen { margin: var(--s-1) 0 0; }
+.photos { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }

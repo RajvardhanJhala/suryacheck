@@ -40,7 +40,7 @@ export type Action = {
 export type SiteView = {
   siteId: string; site: Site; readings: { date: string; kwh: number; source: string }[]
   events: { date: string; type: string }[]; actions: Action[]; latestAnalysisId: string | null
-  panelPhotos?: { url: string; taken: string }[]
+  panelPhotos?: { url: string; taken: string; key?: string; classification?: PhotoClass | null }[]
 }
 
 export type AnalysisSummary = { analysisId: string; status: string; as_of?: string; verdict?: string; monthly_loss_inr?: number; action?: string; finished_at?: string }
@@ -65,7 +65,13 @@ export type Analysis = {
   performance: Performance; scores: Record<string, number>
 }
 
-export type EvidenceKind = 'inverter_screenshot' | 'inverter_photo' | 'meter_photo' | 'panel_photo'
+export type EvidenceKind = 'inverter_screenshot' | 'inverter_photo' | 'meter_photo' | 'panel_photo' | 'camera'
+export type PhotoClass = {
+  kind: 'panel' | 'inverter' | 'meter' | 'screenshot' | 'other'; kind_probs: Record<string, number>; kind_method: string
+  condition?: string; condition_probs?: Record<string, number>; condition_method?: string
+  rekognition?: { solar_panels: number | null; labels: string[] }
+  chosen?: boolean   // the user picked the kind because the model was unsure
+}
 export type Extraction = {
   kind?: EvidenceKind; view?: string; rows: Row[]; warnings: string[]; engine?: string
   meter_total_kwh?: number | null; values?: Record<string, { value: number; confidence: number }>
@@ -101,6 +107,7 @@ export const api = {
     }))
     return uploads.map((u) => u.key)
   },
+  classifyPhoto: (id: string, key: string) => call<PhotoClass>('POST', `/sites/${id}/photos/classify`, { key }),
   extract: (id: string, keys: string[], kind: EvidenceKind) => call<Extraction>('POST', `/sites/${id}/extractions`, { keys, kind }),
 
   async uploadAndExtract(id: string, tiles: Blob[]): Promise<Extraction> {

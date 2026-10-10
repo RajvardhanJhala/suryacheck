@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { api, ApiError, type EvidenceKind, type Extraction, type Row } from '../api'
+import { api, ApiError, type EvidenceKind, type Extraction, type PhotoClass, type Row } from '../api'
+import CameraCapture from './CameraCapture'
 import { usePageMeta } from '../lib/seo'
 import { prepareTiles } from '../image'
 import { ArcLoader } from '../ui/arc'
@@ -61,6 +62,8 @@ export default function NewCheck() {
   const [err, setErr] = useState('')
   const [steps, setSteps] = useState<Record<string, StepState>>({})
   const mark = (k: string, s: StepState) => setSteps((x) => ({ ...x, [k]: s }))
+  const [seen, setSeen] = useState<{ name: string; cls: PhotoClass; note: string; keys?: string[] }[]>([])
+  const [smartBusy, setSmartBusy] = useState(false)
 
   if (sample) return (
     <Screen title="New check" needsAnalysis={false}>
@@ -95,6 +98,52 @@ export default function NewCheck() {
       setErr(e instanceof ApiError && e.status === 429 ? e.message : `${(e as Error).message} You can type the numbers instead.`)
       setRows(lastDays(7)); setStage('confirm')
     }
+  }
+
+  /** Smart camera: classify the photo (CLIP + Rekognition), then route it to the right reader. */
+  const smart = async (file: File) => {
+    if (!siteId) return
+    setSmartBusy(true); setErr('')
+    try {
+      const tiles = await prepareTiles(file)
+      const keys = await api.upload(siteId, tiles, 'camera')
+      const cls = await api.classifyPhoto(siteId, keys[0])
+      if (cls.kind_probs[cls.kind] < KIND_SURE && cls.kind !== 'other') {
+        setSeen((x) => [{ name: file.name, cls, keys, note: 'Not sure what this is — tell us:' }, ...x])
+        return
+      }
+      setSeen((x) => [{ name: file.name, cls, note: '' }, ...x])
+      await route(keys, cls.kind, 0)
+    } catch (e) {
+      setErr(e instanceof ApiError && e.status === 429 ? e.message : (e as Error).message)
+    } finally { setSmartBusy(false) }
+  }
+
+  /** Send an upload to the reader for its kind and write the outcome onto seen[index]. */
+  const route = async (keys: string[], kind: PhotoClass['kind'], index: number) => {
+    if (!siteId) return
+    setSmartBusy(true)
+    try {
+      let note = ''
+      if (kind === 'inverter' || kind === 'screenshot') {
+        const ex = await api.extract(siteId, keys, kind === 'inverter' ? 'inverter_photo' : 'inverter_screenshot')
+        setRows((prev) => Object.values(Object.fromEntries([...prev, ...ex.rows].map((r) => [r.date, r]))).sort((a, b) => a.date.localeCompare(b.date)))
+        setWarnings((w) => [...w, ...ex.warnings])
+        note = ex.rows.length ? `Read ${ex.rows.length} day${ex.rows.length > 1 ? 's' : ''} of units with Amazon Textract.` : 'No units found on it — try straight on, without glare.'
+      } else if (kind === 'meter') {
+        const ex = await api.extract(siteId, keys, 'meter_photo')
+        setMeterInfo(ex.values ?? {}); setMeterTotal(ex.values?.total_kwh?.value ?? null); setWarnings((w) => [...w, ...ex.warnings])
+        note = ex.values?.total_kwh ? `Meter total ${ex.values.total_kwh.value} kWh.` : 'Could not read the meter total.'
+      } else if (kind === 'panel') {
+        note = 'Saved with your report.'
+      } else {
+        note = "That doesn't look like a panel, inverter or meter. Try again."
+      }
+      setSeen((x) => x.map((it, i) => (i !== index ? it : { ...it, note, keys: undefined,
+        cls: it.cls.kind === kind ? it.cls : { ...it.cls, kind, chosen: true, condition: kind === 'panel' ? it.cls.condition : undefined } })))
+    } catch (e) {
+      setErr(e instanceof ApiError && e.status === 429 ? e.message : (e as Error).message)
+    } finally { setSmartBusy(false) }
   }
 
   const analyze = async () => {
@@ -132,8 +181,24 @@ export default function NewCheck() {
       <div className="check-grid">
         <div>
           {stage === 'pick' && (
+            <Card className="smart-card">
+              <h2 className="h3">Smart camera</h2>
+              <p className="muted">One camera for everything. An image model works out what you photographed and sends it to the right reader.</p>
+              <CameraCapture onCapture={smart} busy={smartBusy} />
+              {seen.length > 0 && <ul className="seen">{seen.map((x, i) => (
+                <PhotoResult key={i} cls={x.cls} note={x.note}>
+                  {x.keys && <div className="row">{(['inverter', 'meter', 'panel'] as const).map((k) => (
+                    <Button key={k} variant="secondary" disabled={smartBusy} onClick={() => route(x.keys!, k, i)}>
+                      {k === 'inverter' ? "It's the inverter" : k === 'meter' ? "It's the meter" : "It's my panels"}</Button>))}</div>}
+                </PhotoResult>))}</ul>}
+              {(rows.length > 0 || meterTotal != null) && (
+                <Button icon="arrowRight" onClick={() => setStage('confirm')}>Check the numbers</Button>
+              )}
+            </Card>
+          )}
+          {stage === 'pick' && (
             <Card>
-              <h2 className="h3">1 · Add your evidence</h2>
+              <h2 className="h3">Or add evidence one by one</h2>
               <p className="muted">The inverter numbers are what we analyse. Meter and panel photos are optional.</p>
               <Picker icon="inverter" title="Inverter app or display" capture={false}
                 text="A screenshot of the daily or monthly list gives the most days at once."
@@ -194,5 +259,30 @@ export default function NewCheck() {
         <Card className="timeline-card"><p className="eyebrow">What happens</p><Timeline steps={timeline} /></Card>
       </div>
     </Screen>
+  )
+}
+
+const KIND_LABEL: Record<string, string> = { panel: 'Solar panels', inverter: 'Inverter display', meter: 'Energy meter', screenshot: 'App screenshot', other: 'Not recognised' }
+const COND_LABEL: Record<string, string> = { clean: 'Looks clean', dusty: 'Looks dusty', bird_droppings: 'Bird droppings', damaged: 'Possible damage', shaded: 'Shade on panels' }
+const CONFIDENT = 0.6
+const KIND_SURE = 0.6
+
+/** One classified photo. Condition is shown only when the model is confident; otherwise we say so. */
+export function PhotoResult({ cls, note, children }: { cls: PhotoClass; note: string; children?: React.ReactNode }) {
+  const p = cls.kind_probs[cls.kind]
+  const cp = cls.condition ? cls.condition_probs?.[cls.condition] ?? 0 : 0
+  return (
+    <li className="photo-result">
+      <div className="row">
+        <Badge tone={cls.kind === 'other' ? 'fault' : 'neutral'} icon={cls.kind === 'panel' ? 'panel' : cls.kind === 'meter' ? 'meter' : cls.kind === 'other' ? 'alert' : 'inverter'}>
+          {KIND_LABEL[cls.kind]} · {cls.chosen ? 'chosen by you' : `${Math.round(p * 100)}%`}</Badge>
+        {cls.rekognition?.solar_panels != null && <Badge tone="clean" icon="check">Rekognition: solar panels {Math.round(cls.rekognition.solar_panels)}%</Badge>}
+        {cls.condition && (cp >= CONFIDENT
+          ? <Badge tone={cls.condition === 'clean' ? 'clean' : 'dust'} icon={cls.condition === 'clean' ? 'check' : 'dust'}>{COND_LABEL[cls.condition]} · estimate</Badge>
+          : <Badge>Condition: not sure yet</Badge>)}
+      </div>
+      {note && <p className="muted small">{note}</p>}
+      {children}
+    </li>
   )
 }

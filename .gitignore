@@ -9,3 +9,5 @@ frontend/dist/
 *.local.json
 .claude/
 samconfig.local.toml
+ml/models/
+ml/data/
