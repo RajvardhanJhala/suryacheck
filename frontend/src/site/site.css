@@ -10,8 +10,19 @@
 .skip:focus { left: var(--s-2); }
 .linklike { background: none; border: 0; padding: 0; font: inherit; color: var(--sun-ink); text-decoration: underline; cursor: pointer; min-height: var(--tap); }
 
-/* nav */
-.site-nav { max-width: 1160px; margin: 0 auto; padding: var(--s-3) var(--s-4); display: flex; align-items: center; justify-content: space-between; position: relative; }
+/* announcement strip (after rivermark.ai / effortless) */
+.announce { margin: 0; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--s-2); padding: var(--s-2) var(--s-4);
+  font-size: var(--fs-sm); color: var(--ink-2); background: var(--sunken); text-align: center; }
+.announce a { display: inline-flex; align-items: center; gap: var(--s-1); font-weight: 600; }
+.announce-tag { font: 600 var(--fs-xs)/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--paper);
+  background: var(--ink); border-radius: var(--r-pill); padding: 3px var(--s-2); }
+
+/* nav: floating pill that sticks while you scroll (after heycubit.com) */
+.site-nav { max-width: 1160px; width: calc(100% - 2 * var(--s-4)); margin: var(--s-3) auto 0; padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
+  display: flex; align-items: center; justify-content: space-between; position: sticky; top: var(--s-3); z-index: 20;
+  background: color-mix(in srgb, var(--surface) 88%, transparent); backdrop-filter: blur(10px);
+  border: 1px solid var(--line); border-radius: var(--r-pill); box-shadow: var(--sh-2); }
+.site-nav nav a.active:not(.btn) { background: var(--sunken); border-radius: var(--r-pill); }
 .site-nav a { text-decoration: none; }
 .nav-toggle { padding: 0; width: var(--tap); }
 .site-nav nav { display: none; position: absolute; top: 100%; left: var(--s-4); right: var(--s-4); z-index: 5; flex-direction: column;
@@ -22,11 +33,15 @@
 @media (min-width: 768px) {
   .nav-toggle { display: none; }
   .site-nav nav { display: flex; position: static; flex-direction: row; align-items: center; padding: 0; background: none; border: 0; box-shadow: none; gap: var(--s-4); }
-  .site-nav nav a:not(.btn) { padding: var(--s-2); }
+  .site-nav nav a:not(.btn) { padding: var(--s-2) var(--s-3); }
 }
 
 /* hero */
-.hero { display: grid; gap: var(--s-6); padding-block: var(--s-6) var(--s-5); align-items: center; }
+.hero { display: grid; gap: var(--s-6); padding-block: var(--s-6) var(--s-5); align-items: center; position: relative; isolation: isolate; }
+/* dot grid fading out at the edges (after heycubit.github.io/effortless) */
+.hero::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: radial-gradient(var(--line) 1.2px, transparent 1.4px) 0 0 / 22px 22px;
+  mask-image: radial-gradient(ellipse 70% 75% at 25% 45%, #000 30%, transparent 100%); }
 .hero h1 em { font-style: italic; font-weight: 500; color: var(--dust-ink); }
 .hero-copy .row { margin-top: var(--s-5); }
 @media (min-width: 960px) { .hero { grid-template-columns: 1fr 1.05fr; padding-block: var(--s-8) var(--s-7); } }
@@ -44,11 +59,66 @@
 .dust-hint { grid-column: 1 / -1; display: flex; gap: var(--s-2); align-items: flex-start; font-size: var(--fs-sm); margin: 0; }
 .dust-hint svg { flex: none; margin-top: 3px; }
 
-/* causes */
-.causes { display: grid; gap: var(--s-4); margin-top: var(--s-5); }
-.cause { border-top: 2px solid var(--line); padding-top: var(--s-4); }
-.cause .badge { margin-bottom: var(--s-3); }
-@media (min-width: 768px) { .causes { grid-template-columns: repeat(3, 1fr); gap: var(--s-6); } }
+/* two-tone headline: second clause softer (after rivermark.ai) */
+.h-soft { color: var(--ink-2); font-weight: 500; }
+
+/* secondary button with a filled icon disc (after rivermark.ai) */
+.btn-orb { padding-left: var(--s-1); }
+.orb { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--ink); color: var(--paper); }
+
+/* stacked status cards that slide in, staircase-offset (after heycubit.github.io/effortless) */
+.signals { display: grid; gap: var(--s-6); align-items: center; }
+.signal-stack { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); }
+.signal { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--s-1) var(--s-3); padding: var(--s-3) var(--s-4);
+  background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--tone); border-radius: var(--r-md); box-shadow: var(--sh-1); }
+.signal > svg:first-child { color: var(--tone); grid-row: span 2; }
+.signal strong { color: var(--ink); }
+.signal .muted { grid-column: 2; font-size: var(--fs-sm); }
+.signal-ring { width: 22px; height: 22px; grid-column: 3; grid-row: 1; justify-self: end; rotate: -90deg; fill: none; stroke-width: 2.5; }
+.signal-ring circle:first-child { stroke: var(--sunken); }
+.signal-ring circle:last-child { stroke: var(--tone); stroke-linecap: round; }
+.signal-chip { grid-column: 3; grid-row: 2; font: 600 var(--fs-xs)/1 var(--font-mono); letter-spacing: .04em; color: var(--ink);
+  background: var(--sunken); border-radius: var(--r-pill); padding: var(--s-1) var(--s-2); white-space: nowrap; }
+.signal.is-dust { --tone: var(--dust); } .signal.is-fault { --tone: var(--fault); }
+.signal.is-clean { --tone: var(--clean); } .signal.is-sun { --tone: var(--sun); }
+@supports (animation-timeline: view()) {
+  .signal { animation: chip-in linear both; animation-timeline: view(); animation-range: entry calc(var(--k) * 8%) cover 35%; }
+}
+@keyframes chip-in { from { opacity: 0; translate: 60px 0; } }
+@media (min-width: 960px) {
+  .signals { grid-template-columns: .8fr 1.2fr; }
+  .signal { margin-left: calc(var(--k) * var(--s-6)); }
+}
+
+/* cause tabs: progress line fills, then the next tab opens (after heycubit.github.io/effortless) */
+.cause-tabs { margin-top: var(--s-5); }
+.cause-tablist { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-3); }
+.cause-tab { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-2); padding: 0 0 var(--s-2); min-height: var(--tap);
+  background: none; border: 0; cursor: pointer; font: 600 var(--fs-sm)/1.2 var(--font-text); color: var(--ink-2); text-align: left; }
+.cause-tab[aria-selected='true'] { color: var(--ink); }
+.cause-progress { flex-basis: 100%; height: 2px; background: var(--line); border-radius: 2px; overflow: hidden; margin-bottom: var(--s-2); }
+.cause-tab.is-done .cause-progress { background: var(--sun); }
+.cause-fill { display: block; height: 100%; background: var(--sun); transform-origin: left; animation: fill 7s linear both; }
+.cause-tabs:hover .cause-fill, .cause-tabs:focus-within .cause-fill { animation-play-state: paused; }
+@keyframes fill { from { transform: scaleX(0); } }
+.cause-panel { padding-top: var(--s-5); animation: panel-in .5s var(--ease) both; }
+@keyframes panel-in { from { opacity: 0; translate: 0 10px; } }
+.cause-panel h3 { font-size: var(--fs-2xl); }
+.cause-body { display: grid; gap: var(--s-5); align-items: center; }
+.cause-spark { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--s-4); }
+.cause-spark svg { display: block; width: 100%; height: auto; fill: none; stroke-linecap: round; }
+.spark-expected { stroke: var(--ink-2); stroke-width: 1.5; stroke-dasharray: 5 6; }
+.spark-peers { stroke: var(--line); stroke-width: 2; }
+.spark-yours { stroke-width: 3; stroke-dasharray: 1; animation: draw 1.4s var(--ease) both; }
+@keyframes draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.spark-yours.is-dust, .key.is-dust { stroke: var(--dust); background: var(--dust); }
+.spark-yours.is-fault, .key.is-fault { stroke: var(--fault); background: var(--fault); }
+.spark-yours.is-clean, .key.is-clean { stroke: var(--clean); background: var(--clean); }
+.cause-spark figcaption { margin-top: var(--s-2); display: flex; flex-wrap: wrap; align-items: center; gap: var(--s-1) var(--s-2); }
+.key { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
+.key-expected { background: repeating-linear-gradient(90deg, var(--ink-2) 0 4px, transparent 4px 7px); }
+.key-peers { background: var(--line); }
+@media (min-width: 768px) { .cause-body { grid-template-columns: 1fr 1fr; } }
 
 /* steps along the sun path */
 .sunpath-steps { list-style: none; padding: 0; margin: var(--s-6) 0 0; display: grid; gap: var(--s-5); position: relative; }
@@ -75,8 +145,24 @@
 .trust-facts dd { margin: 0; }
 @media (min-width: 960px) { .trust { grid-template-columns: 1.2fr 1fr; } }
 
-.cta-band { text-align: center; }
-.cta-band .lead { margin-inline: auto; }
+/* night band: starry sky, italic accent word (after rivermark.ai). Fixed colours: it is night in both themes. */
+.night { position: relative; overflow: hidden; margin-top: var(--s-7); padding-block: var(--s-9);
+  background: linear-gradient(180deg, #0d1226 0%, #1a1d33 70%, #3a2a24 100%); color: #f1eadc; }
+.night::after { content: ''; position: absolute; left: 50%; bottom: -160px; width: 520px; height: 220px; translate: -50% 0;
+  border-radius: 50%; background: radial-gradient(closest-side, rgb(242 154 46 / .35), transparent); pointer-events: none; }
+.night-stars { position: absolute; inset: 0; width: 100%; height: 100%; fill: #f1eadc; }
+.night-stars circle { opacity: .55; }
+.night-stars .tw { animation: twinkle 3.2s ease-in-out calc(var(--k) * .8s) infinite alternate; }
+@keyframes twinkle { to { opacity: .1; } }
+.site:has(.night) .site-foot { margin-top: 0; border-top: 0; }
+.night-inner { position: relative; z-index: 1; max-width: 760px; }
+.night h2 { font-size: clamp(var(--fs-3xl), 5vw, var(--fs-5xl)); color: #f6efe2; }
+.night h2 em { font-style: italic; font-weight: 500; color: #f6b25c; }
+.night .lead { color: #c9bfae; }
+.night .row { margin-top: var(--s-5); }
+.night .btn-secondary { background: transparent; color: #f6efe2; border-color: #5a5148; }
+.night .btn-secondary:hover { border-color: #c9bfae; }
+.night .orb { background: #f6efe2; color: #14110c; }
 
 /* footer */
 .site-foot { max-width: 1160px; margin: var(--s-8) auto 0; padding: var(--s-6) var(--s-4) var(--s-7); border-top: 1px solid var(--line);

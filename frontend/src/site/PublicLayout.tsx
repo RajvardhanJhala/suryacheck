@@ -8,6 +8,8 @@ export default function PublicLayout() {
   return (
     <div className="site">
       <a className="skip" href="#main">Skip to content</a>
+      <p className="announce"><span className="announce-tag">New</span> Read your inverter or meter with your phone camera.{' '}
+        <Link to="/signup">Try it <Icon name="arrowRight" size={14} /></Link></p>
       <header className="site-nav">
         <Link to="/" aria-label="SuryaCheck home"><Logo size={30} /></Link>
         <button className="btn btn-ghost nav-toggle" aria-expanded={open} aria-controls="site-menu" onClick={() => setOpen(!open)}>

@@ -2,17 +2,19 @@ import { Link } from 'react-router'
 import { usePageMeta } from '../lib/seo'
 import { ArcDivider } from '../ui/arc'
 import { Icon, type IconName } from '../ui/icons'
-import { Badge } from '../ui/primitives'
+import CauseTabs from './CauseTabs'
 import DustDemo from './DustDemo'
 
-const CAUSES: { icon: IconName; tone: 'dust' | 'fault' | 'neutral'; name: string; looks: string; signature: string }[] = [
-  { icon: 'dust', tone: 'dust', name: 'Dust', looks: 'A slightly smaller number every day. Nothing looks wrong.',
-    signature: 'A slow slide that starts after the last rain, while your neighbours stay level.' },
-  { icon: 'bolt', tone: 'fault', name: 'A string or inverter fault', looks: 'One day the units drop and stay down. No alarm.',
-    signature: 'A sudden step down that holds for days, not a slide.' },
-  { icon: 'cloud', tone: 'neutral', name: 'Weather', looks: 'A bad week. Nothing to fix.',
-    signature: 'Everyone nearby dipped too — SuryaCheck tells you to relax.' },
+// Stacked status cards (after heycubit.github.io/effortless). Examples of SuryaCheck's own messages.
+const SIGNALS: { icon: IconName; tone: 'dust' | 'fault' | 'clean' | 'sun'; title: string; text: string; ring?: number; action: string }[] = [
+  { icon: 'dust', tone: 'dust', title: 'Dust is building', text: '9% below what the sun allowed', ring: 91, action: 'Clean this week' },
+  { icon: 'rupee', tone: 'sun', title: '₹212 lost this month', text: '₹2,540 a year if left', action: 'See the maths' },
+  { icon: 'bolt', tone: 'fault', title: 'Sudden step down', text: '−31% since 4 Oct, neighbours normal', ring: 69, action: 'Call installer' },
+  { icon: 'droplet', tone: 'clean', title: 'Rain washed it', text: 'Back to 98% of expected', ring: 98, action: 'Recheck done' },
 ]
+
+// Deterministic star field for the night band (after rivermark.ai).
+const STARS = Array.from({ length: 70 }, (_, i) => ({ x: (i * 61.8) % 100, y: (i * 38.2 * 1.7) % 100, r: i % 7 === 0 ? 1.6 : 0.9, tw: i % 5 === 0 }))
 
 const STEPS = [
   { icon: 'camera' as IconName, title: 'Photograph your inverter', text: 'The daily units on its display or app. We read them; you confirm.' },
@@ -33,7 +35,7 @@ export default function Landing() {
             then tells you why, what it costs, and the one thing to do.</p>
           <div className="row">
             <Link className="btn btn-primary" to="/signup"><Icon name="camera" size={18} />Check my roof</Link>
-            <Link className="btn btn-secondary" to="/sample"><Icon name="chart" size={18} />Try a sample system</Link>
+            <Link className="btn btn-secondary btn-orb" to="/sample"><span className="orb"><Icon name="chart" size={16} /></span>Try a sample system</Link>
           </div>
         </div>
         <DustDemo />
@@ -41,18 +43,34 @@ export default function Landing() {
 
       <div className="wrap"><ArcDivider /></div>
 
+      <section className="wrap section signals">
+        <div>
+          <p className="eyebrow">What it tells you</p>
+          <h2>One line. <span className="h-soft">The cause, the rupees, the next step.</span></h2>
+          <p className="muted">Example messages. Yours come from your own readings.</p>
+        </div>
+        <ul className="signal-stack">
+          {SIGNALS.map((s, k) => (
+            <li key={s.title} className={`signal is-${s.tone}`} style={{ '--k': k } as React.CSSProperties}>
+              <Icon name={s.icon} size={18} />
+              <strong>{s.title}</strong>
+              <span className="muted">{s.text}</span>
+              {s.ring !== undefined && (
+                <svg className="signal-ring" viewBox="0 0 20 20" aria-hidden="true">
+                  <circle cx="10" cy="10" r="7.5" pathLength={100} />
+                  <circle cx="10" cy="10" r="7.5" pathLength={100} strokeDasharray={`${s.ring} 100`} />
+                </svg>
+              )}
+              <span className="signal-chip">{s.action}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       <section className="wrap section">
         <p className="eyebrow">Why it goes unnoticed</p>
-        <h2>Your inverter shows a number. It never says it's too small.</h2>
-        <div className="causes">
-          {CAUSES.map((c) => (
-            <article key={c.name} className="cause">
-              <Badge tone={c.tone} icon={c.icon}>{c.name}</Badge>
-              <p><span className="muted">What you see:</span> {c.looks}</p>
-              <p><span className="muted">What SuryaCheck sees:</span> {c.signature}</p>
-            </article>
-          ))}
-        </div>
+        <h2>Your inverter shows a number. <span className="h-soft">It never says it's too small.</span></h2>
+        <CauseTabs />
       </section>
 
       <section className="wrap section">
@@ -93,13 +111,19 @@ export default function Landing() {
         </dl>
       </section>
 
-      <section className="wrap section cta-band">
-        <ArcDivider />
-        <h2>Find out what your roof is losing.</h2>
-        <p className="lead">Free. You need the daily units from your inverter and your roof's location.</p>
-        <div className="row center">
-          <Link className="btn btn-primary" to="/signup">Check my roof</Link>
-          <Link className="btn btn-secondary" to="/sample">Try a sample system</Link>
+      <section className="night">
+        <svg className="night-stars" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          {STARS.map((s, k) => <circle key={k} cx={s.x} cy={s.y} r={s.r / 10} className={s.tw ? 'tw' : undefined} style={{ '--k': k % 4 } as React.CSSProperties} />)}
+        </svg>
+        <div className="wrap night-inner">
+          <h2>The sun sets every evening. <em>Your losses</em> don't.</h2>
+          <p className="lead">Dust settles on most roofs in Indian cities between rains. On a 3 kW system that can quietly cost a few hundred
+            rupees a month. Nobody tells you, because the inverter only shows today's number.</p>
+          <p className="lead">Free. You need the daily units from your inverter and your roof's location.</p>
+          <div className="row">
+            <Link className="btn btn-primary" to="/signup">Check my roof</Link>
+            <Link className="btn btn-secondary btn-orb" to="/sample"><span className="orb"><Icon name="chart" size={16} /></span>Try a sample system</Link>
+          </div>
         </div>
       </section>
     </>
