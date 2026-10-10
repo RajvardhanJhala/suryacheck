@@ -83,7 +83,7 @@ Resources:
       CorsConfiguration:
         AllowOrigins: ["*"]
         AllowMethods: [GET, POST, PUT, OPTIONS]
-        AllowHeaders: [content-type, x-demo-key]
+        AllowHeaders: [content-type, x-demo-key, authorization]
       Auth:
         Authorizers:
           Cognito:
@@ -124,7 +124,7 @@ Resources:
         - LambdaInvokePolicy: { FunctionName: !Ref AgentFunction }
         - Statement:
             - Effect: Allow
-              Action: [bedrock:InvokeModel, bedrock:Converse]
+              Action: [bedrock:InvokeModel, bedrock:Converse, textract:DetectDocumentText, textract:AnalyzeDocument]
               Resource: "*"
       Events:
         Health:        { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: /health, Method: GET } }
@@ -136,6 +136,9 @@ Resources:
         MeterReading:  { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/meter", Method: POST } }
         SiteEvents:    { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/events", Method: POST } }
         StartAnalysis: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/analyses", Method: POST } }
+        ListAnalyses:  { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/analyses", Method: GET } }
+        Me:            { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: /me, Method: GET, Auth: { Authorizer: Cognito } } }
+        SaveMySite:    { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: /me/site, Method: PUT, Auth: { Authorizer: Cognito } } }
         GetAnalysis:   { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/analyses/{analysis_id}", Method: GET } }
         CreateAction:  { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/actions", Method: POST } }
         DemoRecheck:   { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/actions/{action_id}/recheck", Method: POST } }
@@ -217,7 +220,7 @@ Resources:
       UserPoolId: !Ref UserPool
       ClientName: suryacheck-web
       GenerateSecret: false
-      ExplicitAuthFlows: [ALLOW_USER_SRP_AUTH, ALLOW_REFRESH_TOKEN_AUTH]
+      ExplicitAuthFlows: [ALLOW_USER_SRP_AUTH, ALLOW_REFRESH_TOKEN_AUTH, ALLOW_ADMIN_USER_PASSWORD_AUTH]   # admin flow: IAM-only, used by scripts/e2e_auth.py
       PreventUserExistenceErrors: ENABLED
 
 Outputs:

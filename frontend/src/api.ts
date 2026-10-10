@@ -10,10 +10,18 @@ export class ApiError extends Error {
   }
 }
 
+// The app sets this to the Cognito access token getter; the legacy screens leave it unset.
+let tokenProvider: (() => Promise<string | null>) | null = null
+export const setTokenProvider = (fn: typeof tokenProvider) => { tokenProvider = fn }
+
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
+  const headers: Record<string, string> = {}
+  if (body !== undefined) headers['content-type'] = 'application/json'
+  const token = tokenProvider ? await tokenProvider() : null
+  if (token) headers.authorization = `Bearer ${token}`
   const res = await fetch(API + path, {
     method,
-    headers: body === undefined ? undefined : { 'content-type': 'application/json' },
+    headers,
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   const data = await res.json().catch(() => ({}))
@@ -26,6 +34,7 @@ export type Row = { date: string; kwh: number }
 export type Site = {
   lat: number; lon: number; capacity_kwp: number; tariff_inr: number; cleaning_cost_inr: number
   installer_phone?: string | null; simulated?: boolean; label?: string
+  tilt?: number; azimuth?: number; install_date?: string | null; language?: 'en' | 'hi'; notify_email?: boolean
 }
 
 export type Action = {
@@ -37,6 +46,15 @@ export type Action = {
 export type SiteView = {
   siteId: string; site: Site; readings: { date: string; kwh: number; source: string }[]
   events: { date: string; type: string }[]; actions: Action[]; latestAnalysisId: string | null
+  panelPhotos?: { url: string; taken: string }[]
+}
+
+export type AnalysisSummary = { analysisId: string; status: string; as_of?: string; verdict?: string; monthly_loss_inr?: number; action?: string; finished_at?: string }
+
+export type Performance = {
+  segment_start: string; baseline_pi: number; segment_slope: number | null; segment_decline: number | null
+  med3_latest: number | null; med7_latest: number | null; mean_expected_kwh: number; hc_days: number
+  steps: { date: string; delta: number }[]; trip_days: string[]
 }
 
 export type SeriesPoint = {
@@ -50,10 +68,14 @@ export type Analysis = {
   monthly_loss_inr: number; window_loss_inr: number; evidence: string[]; recheck_days: number | null
   explanation: { headline: string; why: string; what_to_do: string }; explanation_source: string
   series: SeriesPoint[]; peers: { n_peers: number }; peers_simulated: boolean
-  performance: { segment_start: string; baseline_pi: number }
+  performance: Performance; scores: Record<string, number>
 }
 
-export type Extraction = { view: string; rows: Row[]; meter_total_kwh: number | null; warnings: string[] }
+export type EvidenceKind = 'inverter_screenshot' | 'inverter_photo' | 'meter_photo' | 'panel_photo'
+export type Extraction = {
+  kind?: EvidenceKind; view?: string; rows: Row[]; warnings: string[]; engine?: string
+  meter_total_kwh?: number | null; values?: Record<string, { value: number; confidence: number }>
+}
 
 type PresignedPost = { key: string; url: string; fields: Record<string, string> }
 
@@ -69,6 +91,24 @@ export const api = {
   getAnalysis: (id: string, aid: string) => call<Analysis>('GET', `/sites/${id}/analyses/${aid}`),
   createAction: (id: string, analysisId: string, action: string) =>
     call<Action>('POST', `/sites/${id}/actions`, { analysisId, action }),
+
+  me: () => call<{ siteId: string | null }>('GET', '/me'),
+  saveMySite: (b: Partial<Site>) => call<{ siteId: string }>('PUT', '/me/site', b),
+  listAnalyses: (id: string) => call<{ analyses: AnalysisSummary[] }>('GET', `/sites/${id}/analyses`),
+
+  async upload(id: string, tiles: Blob[], kind: EvidenceKind): Promise<string[]> {
+    const { uploads } = await call<{ uploads: PresignedPost[] }>('POST', `/sites/${id}/uploads`,
+      { tiles: tiles.length, contentType: 'image/jpeg', kind })
+    await Promise.all(uploads.map(async (u, i) => {
+      const form = new FormData()
+      Object.entries(u.fields).forEach(([k, v]) => form.append(k, v))
+      form.append('file', tiles[i])
+      const r = await fetch(u.url, { method: 'POST', body: form })
+      if (!r.ok) throw new Error('Upload failed. Is the image under 3.75 MB?')
+    }))
+    return uploads.map((u) => u.key)
+  },
+  extract: (id: string, keys: string[], kind: EvidenceKind) => call<Extraction>('POST', `/sites/${id}/extractions`, { keys, kind }),
 
   async uploadAndExtract(id: string, tiles: Blob[]): Promise<Extraction> {
     const { uploads } = await call<{ uploads: PresignedPost[] }>('POST', `/sites/${id}/uploads`,

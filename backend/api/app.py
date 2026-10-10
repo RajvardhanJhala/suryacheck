@@ -1,4 +1,7 @@
-"""HTTP API (Powertools router). Every route validates input; Bedrock-backed routes are capped."""
+"""HTTP API (Powertools router). Every route validates input; OCR-backed routes are capped.
+
+Ownership: a site with `owner_sub` is visible only to that Cognito user (access token checked
+with Cognito GetUser). Demo sites have no owner and stay public."""
 import hashlib
 import hmac
 import json
@@ -20,12 +23,34 @@ logger = Logger()
 app = APIGatewayHttpResolver()
 s3 = boto3.client("s3")
 lam = boto3.client("lambda")
+cognito = boto3.client("cognito-idp")
 
 BUCKET = os.environ.get("BUCKET_NAME", "")
 AGENT_FN = os.environ.get("AGENT_FUNCTION", "")
 MAX_TILE_BYTES = int(3.75 * 1024 * 1024)
 MAX_TILES = 8
 SITE_ID_RE = re.compile(r"^[a-z0-9]{12}$")
+KINDS = ("inverter_screenshot", "inverter_photo", "meter_photo", "panel_photo")
+_subs: dict[str, str | None] = {}
+
+
+def _caller_sub():
+    """Cognito user id from the Bearer access token, verified by Cognito itself (cached per container)."""
+    token = (app.current_event.get_header_value("authorization") or "").removeprefix("Bearer ").strip()
+    if not token:
+        return None
+    if token not in _subs:
+        try:
+            attrs = cognito.get_user(AccessToken=token)["UserAttributes"]
+            _subs[token] = next(a["Value"] for a in attrs if a["Name"] == "sub")
+        except Exception:
+            _subs[token] = None
+    return _subs[token]
+
+
+def _claims_sub():
+    """For /me routes the API Gateway JWT authorizer has already verified the token."""
+    return app.current_event.request_context.authorizer.jwt_claim["sub"]
 
 
 def _body():
@@ -52,8 +77,8 @@ def _site(site_id):
     if not SITE_ID_RE.match(site_id):
         raise NotFoundError("Unknown site")
     site = ddb.get(ddb.site_pk(site_id), "META")
-    if not site:
-        raise NotFoundError("Unknown site")
+    if not site or (site.get("owner_sub") and site["owner_sub"] != _caller_sub()):
+        raise NotFoundError("Unknown site")       # someone else's site looks the same as no site
     return site
 
 
@@ -110,9 +135,65 @@ def get_site(site_id):
     events = [{"date": e["SK"][6:16], "type": e["type"]} for e in ddb.query_prefix(pk, "EVENT#")]
     actions = [{k: v for k, v in a.items() if k not in ("PK",)} for a in ddb.query_prefix(pk, "ACTION#")]
     analyses = sorted(ddb.query_prefix(pk, "ANALYSIS#"), key=lambda a: a["SK"], reverse=True)
-    public = {k: v for k, v in site.items() if k not in ("PK", "SK", "GSI1PK", "GSI1SK", "pi_norm_series")}
+    public = {k: v for k, v in site.items() if k not in ("PK", "SK", "GSI1PK", "GSI1SK", "pi_norm_series", "owner_sub")}
     return {"siteId": site_id, "site": public, "readings": readings, "events": events, "actions": actions,
-            "latestAnalysisId": analyses[0]["SK"][9:] if analyses else None}
+            "latestAnalysisId": analyses[0]["SK"][9:] if analyses else None, "panelPhotos": _panel_photos(site_id)}
+
+
+def _panel_photos(site_id, limit=6):
+    """Latest panel photos as short-lived links (the bucket keeps uploads for 7 days)."""
+    if not BUCKET:
+        return []
+    objs = s3.list_objects_v2(Bucket=BUCKET, Prefix=f"uploads/{site_id}/panel_photo/").get("Contents", [])
+    objs = sorted(objs, key=lambda o: o["LastModified"], reverse=True)[:limit]
+    return [{"url": s3.generate_presigned_url("get_object", Params={"Bucket": BUCKET, "Key": o["Key"]}, ExpiresIn=3600),
+             "taken": o["LastModified"].isoformat()} for o in objs]
+
+
+@app.get("/sites/<site_id>/analyses")
+def list_analyses(site_id):
+    _site(site_id)
+    keep = ("status", "as_of", "verdict", "monthly_loss_inr", "action", "finished_at")
+    items = sorted(ddb.query_prefix(ddb.site_pk(site_id), "ANALYSIS#"), key=lambda a: a["SK"], reverse=True)
+    return {"analyses": [{"analysisId": a["SK"][9:], **{k: a.get(k) for k in keep}} for a in items[:50]]}
+
+
+@app.get("/me")
+def me():
+    link = ddb.get(f"USER#{_claims_sub()}", "SITE")
+    return {"siteId": link["site_id"] if link else None}
+
+
+@app.put("/me/site")
+def save_my_site():
+    """Create the caller's site on first save, then update its settings."""
+    sub, b = _claims_sub(), _body()
+    lat, lon = _num(b, "lat", 6, 37), _num(b, "lon", 68, 98)
+    fields = {
+        "lat": lat, "lon": lon, "geohash5": geohash(lat, lon), "capacity_kwp": _num(b, "capacity_kwp", 0.5, 50),
+        "tilt": _num(b, "tilt", 0, 60, 23), "azimuth": _num(b, "azimuth", 0, 360, 180),
+        "tariff_inr": _num(b, "tariff_inr", 1, 20, 6), "cleaning_cost_inr": _num(b, "cleaning_cost_inr", 0, 5000, 200),
+        "installer_phone": re.sub(r"[^\d+]", "", str(b.get("installer_phone") or ""))[:15] or None,
+        "install_date": str(b.get("install_date") or "")[:10] or None,
+        "language": "hi" if b.get("language") == "hi" else "en",
+        "notify_email": bool(b.get("notify_email", True)),
+        "label": str(b.get("label") or "My roof")[:60],
+    }
+    link = ddb.get(f"USER#{sub}", "SITE")
+    if link:
+        site_id = link["site_id"]
+        site = ddb.get(ddb.site_pk(site_id), "META")
+        ddb.put({**site, **fields, "GSI1PK": f"GEO#{fields['geohash5']}"})
+        return {"siteId": site_id}
+    try:
+        caps.take_global("sites_created")
+    except caps.CapExceeded:
+        return _too_many("new sites")
+    site_id = uuid.uuid4().hex[:12]
+    ddb.put({"PK": ddb.site_pk(site_id), "SK": "META", **fields, "simulated": False, "owner_sub": sub,
+             "created_at": datetime.utcnow().isoformat(), "GSI1PK": f"GEO#{fields['geohash5']}", "GSI1SK": ddb.site_pk(site_id)})
+    ddb.put({"PK": f"USER#{sub}", "SK": "SITE", "site_id": site_id})
+    return Response(201, "application/json", json.dumps({"siteId": site_id}))
 
 
 @app.post("/sites/<site_id>/uploads")
@@ -123,10 +204,13 @@ def create_uploads(site_id):
     ctype = b.get("contentType", "image/jpeg")
     if ctype not in ("image/jpeg", "image/png"):
         raise BadRequestError("contentType must be image/jpeg or image/png")
+    kind = b.get("kind", "inverter_screenshot")
+    if kind not in KINDS:
+        raise BadRequestError(f"kind must be one of {', '.join(KINDS)}")
     batch = uuid.uuid4().hex[:8]
     posts = []
     for i in range(n):
-        key = f"uploads/{site_id}/{batch}/{i}.{'png' if ctype == 'image/png' else 'jpg'}"
+        key = f"uploads/{site_id}/{kind}/{batch}/{i}.{'png' if ctype == 'image/png' else 'jpg'}"
         posts.append({"key": key, **s3.generate_presigned_post(
             BUCKET, key, Fields={"Content-Type": ctype},
             Conditions=[{"Content-Type": ctype}, ["content-length-range", 1, MAX_TILE_BYTES]], ExpiresIn=600)})
@@ -135,10 +219,13 @@ def create_uploads(site_id):
 
 @app.post("/sites/<site_id>/extractions")
 def extract(site_id):
-    from api.extraction import extract_rows   # imported lazily: needs Pillow + Bedrock
-    _writable(site_id)
-    keys = _body().get("keys") or []
-    if not keys or len(keys) > MAX_TILES or not all(str(k).startswith(f"uploads/{site_id}/") for k in keys):
+    from api.extraction import extract_rows   # imported lazily: needs Pillow
+    site = _writable(site_id)
+    b = _body()
+    keys, kind = b.get("keys") or [], b.get("kind", "inverter_screenshot")
+    if kind not in KINDS[:3]:
+        raise BadRequestError("kind must be inverter_screenshot, inverter_photo or meter_photo")
+    if not keys or len(keys) > MAX_TILES or not all(str(k).startswith(f"uploads/{site_id}/{kind}/") for k in keys):
         raise BadRequestError(f"keys must be 1-{MAX_TILES} upload keys for this site")
     try:
         caps.take_global("extractions")
@@ -146,7 +233,7 @@ def extract(site_id):
     except caps.CapExceeded:
         return _too_many("screenshot reading (please type the numbers in)")
     try:
-        return extract_rows(BUCKET, keys)
+        return extract_rows(BUCKET, keys, kind, site["capacity_kwp"] * 7.5)
     except Exception:
         logger.exception("extraction failed")
         return Response(503, "application/json", json.dumps(

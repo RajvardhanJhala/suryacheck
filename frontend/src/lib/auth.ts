@@ -21,8 +21,8 @@ export const auth = {
   async currentEmail(): Promise<string | null> {
     try { await A.getCurrentUser(); return (await A.fetchUserAttributes()).email ?? '' } catch { return null }
   },
-  async idToken(): Promise<string | null> {
-    try { return (await A.fetchAuthSession()).tokens?.idToken?.toString() ?? null } catch { return null }
+  async accessToken(): Promise<string | null> {
+    try { return (await A.fetchAuthSession()).tokens?.accessToken?.toString() ?? null } catch { return null }
   },
 }
 

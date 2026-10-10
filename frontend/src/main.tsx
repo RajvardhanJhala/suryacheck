@@ -1,8 +1,9 @@
 import { Component, StrictMode, lazy, Suspense, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
+import { BrowserRouter, Route, Routes } from 'react-router'
 import './ui/base.css'
 import './site/site.css'
+import './app/app.css'
 import Landing from './site/Landing'
 import PublicLayout from './site/PublicLayout'
 import NotFound from './site/NotFound'
@@ -12,6 +13,11 @@ const HowItWorks = lazy(() => import('./site/HowItWorks'))
 const Auth = lazy(() => import('./site/Auth'))
 const AppShell = lazy(() => import('./app/AppShell'))
 const Placeholder = lazy(() => import('./app/Placeholder'))
+const Overview = lazy(() => import('./app/Overview'))
+const NewCheck = lazy(() => import('./app/NewCheck'))
+const Report = lazy(() => import('./app/Report'))
+const Money = lazy(() => import('./app/Money'))
+const MySystem = lazy(() => import('./app/MySystem'))
 const Brand = lazy(() => import('./pages/Brand'))
 // shortcut: old screens stay at /legacy until step 3 replaces them.
 const Legacy = lazy(() => import('./LegacyApp'))
@@ -45,17 +51,25 @@ createRoot(document.getElementById('root')!).render(
               <Route path="login" element={<Auth mode="login" />} />
               <Route path="signup" element={<Auth mode="signup" />} />
               <Route path="forgot" element={<Auth mode="forgot" />} />
-              <Route path="sample" element={<Navigate to={{ pathname: '/legacy', hash: '#/site/demohemant01' }} replace />} />
               <Route path="*" element={<NotFound />} />
             </Route>
-            <Route path="app" element={<AppShell />}>
-              <Route index element={<Placeholder title="Overview" />} />
-              <Route path="check" element={<Placeholder title="New check" />} />
-              <Route path="report" element={<Placeholder title="Report" />} />
-              <Route path="money" element={<Placeholder title="Money" />} />
+            <Route path="app" element={<AppShell mode="app" />}>
+              <Route index element={<Overview />} />
+              <Route path="check" element={<NewCheck />} />
+              <Route path="report" element={<Report />} />
+              <Route path="money" element={<Money />} />
               <Route path="clean" element={<Placeholder title="Get it cleaned" />} />
               <Route path="history" element={<Placeholder title="History" />} />
-              <Route path="settings" element={<Placeholder title="My system" />} />
+              <Route path="settings" element={<MySystem />} />
+            </Route>
+            <Route path="sample" element={<AppShell mode="sample" />}>
+              <Route index element={<Overview />} />
+              <Route path="check" element={<NewCheck />} />
+              <Route path="report" element={<Report />} />
+              <Route path="money" element={<Money />} />
+              <Route path="clean" element={<Placeholder title="Get it cleaned" />} />
+              <Route path="history" element={<Placeholder title="History" />} />
+              <Route path="settings" element={<MySystem />} />
             </Route>
             <Route path="brand" element={<Brand />} />
             <Route path="legacy" element={<Legacy />} />
