@@ -84,13 +84,6 @@ Resources:
         AllowOrigins: ["*"]
         AllowMethods: [GET, POST, PUT, OPTIONS]
         AllowHeaders: [content-type, x-demo-key, authorization]
-      Auth:
-        Authorizers:
-          Cognito:
-            IdentitySource: $request.header.Authorization
-            JwtConfiguration:
-              issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}
-              audience: [!Ref UserPoolClient]
       DefaultRouteSettings:
         ThrottlingBurstLimit: 10
         ThrottlingRateLimit: 5
@@ -137,8 +130,7 @@ Resources:
         SiteEvents:    { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/events", Method: POST } }
         StartAnalysis: { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/analyses", Method: POST } }
         ListAnalyses:  { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/analyses", Method: GET } }
-        Me:            { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: /me, Method: GET, Auth: { Authorizer: Cognito } } }
-        SaveMySite:    { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: /me/site, Method: PUT, Auth: { Authorizer: Cognito } } }
+        UpdateSite:    { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}", Method: PUT } }
         GetAnalysis:   { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/analyses/{analysis_id}", Method: GET } }
         CreateAction:  { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/actions", Method: POST } }
         DemoRecheck:   { Type: HttpApi, Properties: { ApiId: !Ref HttpApi, Path: "/sites/{site_id}/actions/{action_id}/recheck", Method: POST } }

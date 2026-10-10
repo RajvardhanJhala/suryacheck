@@ -65,8 +65,8 @@ export default function NewCheck() {
   if (sample) return (
     <Screen title="New check" needsAnalysis={false}>
       <div className="state"><Notice tone="info" title="The sample system is read-only">
-        Create a free account to check your own roof with photos of your inverter, meter and panels.</Notice>
-        <Link className="btn btn-primary" to="/signup">Check my own roof</Link></div>
+        Check your own roof, free and with no sign-up, with photos of your inverter, meter and panels.</Notice>
+        <Link className="btn btn-primary" to="/app">Check my own roof</Link></div>
     </Screen>
   )
 

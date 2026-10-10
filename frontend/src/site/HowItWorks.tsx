@@ -65,7 +65,7 @@ recovered ₹        = ₹ per month × share of the gap closed after the action
       <p>Weather: <a href="https://open-meteo.com" target="_blank" rel="noreferrer">Open-Meteo</a> (CC BY 4.0, non-commercial
         use). Solar model: <a href="https://pvlib-python.readthedocs.io" target="_blank" rel="noreferrer">pvlib-python</a> (BSD-3).
         Photo reading: Amazon Textract. Places: Amazon Location Service.</p>
-      <p><Link className="btn btn-primary" to="/signup">Check my roof</Link></p>
+      <p><Link className="btn btn-primary" to="/app">Check my roof</Link></p>
     </article>
   )
 }

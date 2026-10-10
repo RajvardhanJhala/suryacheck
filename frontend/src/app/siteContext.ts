@@ -22,6 +22,13 @@ export function useSite(): SiteState {
   return s
 }
 
+// No accounts: this browser remembers its own site id. Storage can throw in private modes.
+// shortcut: lost if the browser's site data is cleared; add an export/bookmark link if users ask.
+export const mySite = {
+  get: (): string | null => { try { return localStorage.getItem('suryacheck.site') } catch { return null } },
+  set: (id: string) => { try { localStorage.setItem('suryacheck.site', id) } catch { /* still works for this visit */ } },
+}
+
 export const SAMPLES = [
   { id: 'demohemant01', name: 'Hemant · dust' },
   { id: 'demomeera001', name: 'Meera · fault' },

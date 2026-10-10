@@ -34,7 +34,7 @@ export default function Landing() {
           <p className="lead">SuryaCheck compares what your rooftop solar made with what the real sunshine on your roof allowed —
             then tells you why, what it costs, and the one thing to do.</p>
           <div className="row">
-            <Link className="btn btn-primary" to="/signup"><Icon name="camera" size={18} />Check my roof</Link>
+            <Link className="btn btn-primary" to="/app"><Icon name="camera" size={18} />Check my roof</Link>
             <Link className="btn btn-secondary btn-orb" to="/sample"><span className="orb"><Icon name="chart" size={16} /></span>Try a sample system</Link>
           </div>
         </div>
@@ -121,7 +121,7 @@ export default function Landing() {
             rupees a month. Nobody tells you, because the inverter only shows today's number.</p>
           <p className="lead">Free. You need the daily units from your inverter and your roof's location.</p>
           <div className="row">
-            <Link className="btn btn-primary" to="/signup">Check my roof</Link>
+            <Link className="btn btn-primary" to="/app">Check my roof</Link>
             <Link className="btn btn-secondary btn-orb" to="/sample"><span className="orb"><Icon name="chart" size={16} /></span>Try a sample system</Link>
           </div>
         </div>

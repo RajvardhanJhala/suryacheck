@@ -10,15 +10,9 @@ export class ApiError extends Error {
   }
 }
 
-// The app sets this to the Cognito access token getter; the legacy screens leave it unset.
-let tokenProvider: (() => Promise<string | null>) | null = null
-export const setTokenProvider = (fn: typeof tokenProvider) => { tokenProvider = fn }
-
 async function call<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = {}
   if (body !== undefined) headers['content-type'] = 'application/json'
-  const token = tokenProvider ? await tokenProvider() : null
-  if (token) headers.authorization = `Bearer ${token}`
   const res = await fetch(API + path, {
     method,
     headers,
@@ -92,8 +86,7 @@ export const api = {
   createAction: (id: string, analysisId: string, action: string) =>
     call<Action>('POST', `/sites/${id}/actions`, { analysisId, action }),
 
-  me: () => call<{ siteId: string | null }>('GET', '/me'),
-  saveMySite: (b: Partial<Site>) => call<{ siteId: string }>('PUT', '/me/site', b),
+  updateSite: (id: string, b: Partial<Site>) => call<{ siteId: string }>('PUT', `/sites/${id}`, b),
   listAnalyses: (id: string) => call<{ analyses: AnalysisSummary[] }>('GET', `/sites/${id}/analyses`),
 
   async upload(id: string, tiles: Blob[], kind: EvidenceKind): Promise<string[]> {

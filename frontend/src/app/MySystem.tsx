@@ -29,11 +29,12 @@ function SystemForm() {
   const save = async (e: React.FormEvent) => {
     e.preventDefault(); setBusy(true); setMsg(null)
     try {
-      const r = await api.saveMySite({
+      const body = {
         label: f.label, lat: +f.lat, lon: +f.lon, capacity_kwp: +f.capacity_kwp, tilt: +f.tilt, azimuth: +f.azimuth,
         install_date: f.install_date || null, tariff_inr: +f.tariff_inr, cleaning_cost_inr: +f.cleaning_cost_inr,
         installer_phone: f.installer_phone || null, language: f.language as 'en' | 'hi', notify_email: f.notify_email,
-      })
+      }
+      const r = siteId ? await api.updateSite(siteId, body) : await api.createSite(body)
       if (!siteId) { setSiteId(r.siteId); nav('/app/check') } else { await reload(); setMsg({ tone: 'clean', text: 'Saved.' }) }
     } catch (x) { setMsg({ tone: 'fault', text: (x as Error).message }) } finally { setBusy(false) }
   }
@@ -73,8 +74,6 @@ function SystemForm() {
               <label htmlFor="lang">Language for explanations</label>
               <select id="lang" value={f.language} onChange={set('language')}><option value="en">English</option><option value="hi">हिंदी</option></select>
             </div>
-            <label className="check"><input type="checkbox" checked={f.notify_email} onChange={set('notify_email')} /> Email me when a recheck finishes</label>
-            <p className="field-hint">Email notifications are saved now and sent once our email service leaves AWS sandbox mode.</p>
           </Card>
         </fieldset>
         {msg && <Notice tone={msg.tone} title={msg.text} />}

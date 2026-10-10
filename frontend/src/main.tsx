@@ -10,7 +10,6 @@ import NotFound from './site/NotFound'
 import { ArcLoader } from './ui/arc'
 
 const HowItWorks = lazy(() => import('./site/HowItWorks'))
-const Auth = lazy(() => import('./site/Auth'))
 const AppShell = lazy(() => import('./app/AppShell'))
 const Placeholder = lazy(() => import('./app/Placeholder'))
 const Overview = lazy(() => import('./app/Overview'))
@@ -48,9 +47,6 @@ createRoot(document.getElementById('root')!).render(
             <Route element={<PublicLayout />}>
               <Route index element={<Landing />} />
               <Route path="how-it-works" element={<HowItWorks />} />
-              <Route path="login" element={<Auth mode="login" />} />
-              <Route path="signup" element={<Auth mode="signup" />} />
-              <Route path="forgot" element={<Auth mode="forgot" />} />
               <Route path="*" element={<NotFound />} />
             </Route>
             <Route path="app" element={<AppShell mode="app" />}>

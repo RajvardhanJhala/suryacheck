@@ -19,7 +19,7 @@ function MoneyView() {
 
   const save = async () => {
     if (!view) return
-    try { await api.saveMySite({ ...view.site, tariff_inr: T, cleaning_cost_inr: C }); setSaved('Saved'); reload() }
+    try { await api.updateSite(view.siteId, { ...view.site, tariff_inr: T, cleaning_cost_inr: C }); setSaved('Saved'); reload() }
     catch (e) { setSaved((e as Error).message) }
   }
 

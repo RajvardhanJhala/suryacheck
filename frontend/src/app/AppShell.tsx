@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'react-router'
-import { api, setTokenProvider, type Analysis, type SiteView } from '../api'
-import { auth } from '../lib/auth'
-import { ArcLoader, Logo } from '../ui/arc'
+import { Link, Navigate, NavLink, Outlet, useLocation, useSearchParams } from 'react-router'
+import { api, type Analysis, type SiteView } from '../api'
+import { Logo } from '../ui/arc'
 import { Icon, type IconName } from '../ui/icons'
 import { Badge } from '../ui/primitives'
-import { SAMPLES, SiteCtx, type SiteState } from './siteContext'
+import { mySite, SAMPLES, SiteCtx, type SiteState } from './siteContext'
 
 const NAV: { to: string; label: string; icon: IconName; tab?: boolean }[] = [
   { to: '', label: 'Overview', icon: 'home', tab: true },
@@ -17,30 +16,18 @@ const NAV: { to: string; label: string; icon: IconName; tab?: boolean }[] = [
   { to: '/settings', label: 'My system', icon: 'settings', tab: true },
 ]
 
-/** /app (signed in, own site) and /sample (public, seeded sample sites) share every screen. */
+/** /app (this browser's own site) and /sample (public, seeded sample sites) share every screen. */
 export default function AppShell({ mode }: { mode: 'app' | 'sample' }) {
   const sample = mode === 'sample'
   const base = sample ? '/sample' : '/app'
   const loc = useLocation()
-  const nav = useNavigate()
   const [params, setParams] = useSearchParams()
-  const [email, setEmail] = useState<string | null | undefined>(sample ? '' : undefined)
-  const [siteId, setSiteIdState] = useState<string | null>(sample ? (params.get('site') ?? SAMPLES[0].id) : null)
+  const [siteId, setSiteIdState] = useState<string | null>(sample ? (params.get('site') ?? SAMPLES[0].id) : mySite.get())
   const [view, setView] = useState<SiteView | null>(null)
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
   const [analysisId, setAnalysisId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-
-  useEffect(() => {
-    setTokenProvider(sample ? null : auth.accessToken)
-    if (sample) return
-    auth.currentEmail().then(async (e) => {
-      setEmail(e)
-      if (e) setSiteIdState((await api.me()).siteId)
-      setLoading(false)
-    }).catch(() => { setEmail(null); setLoading(false) })
-  }, [sample])
 
   const reload = useCallback(async () => {
     if (!siteId) { setLoading(false); return }
@@ -52,14 +39,12 @@ export default function AppShell({ mode }: { mode: 'app' | 'sample' }) {
     } catch (e) { setError((e as Error).message) } finally { setLoading(false) }
   }, [siteId])
 
-  useEffect(() => { if (email !== undefined && email !== null) reload() }, [reload, email])
+  useEffect(() => { reload() }, [reload])
 
-  if (email === undefined) return <div className="center-screen"><ArcLoader label="Checking your session" /></div>
-  if (email === null) return <Navigate to={`/login?next=${encodeURIComponent(loc.pathname)}`} replace />
-  // First visit after sign-up: set up the system before anything else.
+  // First visit: set up the system before anything else.
   if (!sample && !siteId && !loading && !loc.pathname.endsWith('/settings')) return <Navigate to="/app/settings?welcome=1" replace />
 
-  const setSiteId = (id: string) => { setSiteIdState(id); if (sample) setParams({ site: id }) }
+  const setSiteId = (id: string) => { setSiteIdState(id); if (sample) setParams({ site: id }); else mySite.set(id) }
   const state: SiteState = { base, sample, siteId, view, analysis, analysisId, loading, error, reload, setSiteId }
   const q = sample ? `?site=${siteId}` : ''
 
@@ -75,10 +60,7 @@ export default function AppShell({ mode }: { mode: 'app' | 'sample' }) {
             ))}
           </nav>
           <div className="sidebar-foot">
-            {sample ? <Link className="btn btn-primary" to="/signup">Check my own roof</Link> : <>
-              <span className="muted small" title={email}>{email}</span>
-              <button className="btn btn-ghost" onClick={() => auth.signOut().then(() => nav('/'))}><Icon name="logout" />Log out</button>
-            </>}
+            {sample && <Link className="btn btn-primary" to="/app">Check my own roof</Link>}
           </div>
         </aside>
         <div className="app-col">
