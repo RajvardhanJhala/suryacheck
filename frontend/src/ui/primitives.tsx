@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode } from 'react'
 import { Icon, type IconName } from './icons'
-import { reducedMotion } from './arc'
+import { reducedMotion } from './geometry'
 
 /** Instrument reading: monospaced tabular figures that count up when they scroll into view. */
 export function Reading({ value, unit, prefix, decimals = 0, size = 'lg', tone }: {
@@ -8,9 +8,11 @@ export function Reading({ value, unit, prefix, decimals = 0, size = 'lg', tone }
   tone?: 'dust' | 'clean' | 'sun'
 }) {
   const ref = useRef<HTMLSpanElement>(null)
-  const [shown, setShown] = useState(reducedMotion() ? value : 0)
+  const still = reducedMotion()
+  const [animated, setShown] = useState(0)
+  const shown = still ? value : animated
   useEffect(() => {
-    if (reducedMotion()) { setShown(value); return }
+    if (still) return
     const el = ref.current
     if (!el) return
     let raf = 0
@@ -27,7 +29,7 @@ export function Reading({ value, unit, prefix, decimals = 0, size = 'lg', tone }
     }, { threshold: 0.3 })
     io.observe(el)
     return () => { io.disconnect(); cancelAnimationFrame(raf) }
-  }, [value])
+  }, [value, still])
   const text = shown.toLocaleString('en-IN', { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
   return (
     <span ref={ref} className={`reading ${size}${tone ? ` is-${tone}` : ''}`}>

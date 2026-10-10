@@ -84,6 +84,13 @@ Resources:
         AllowOrigins: ["*"]
         AllowMethods: [GET, POST, PUT, OPTIONS]
         AllowHeaders: [content-type, x-demo-key]
+      Auth:
+        Authorizers:
+          Cognito:
+            IdentitySource: $request.header.Authorization
+            JwtConfiguration:
+              issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}
+              audience: [!Ref UserPoolClient]
       DefaultRouteSettings:
         ThrottlingBurstLimit: 10
         ThrottlingRateLimit: 5
@@ -189,7 +196,35 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${ApiFunction}
       RetentionInDays: 7
 
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: suryacheck-users
+      UsernameAttributes: [email]
+      AutoVerifiedAttributes: [email]
+      AccountRecoverySetting:
+        RecoveryMechanisms: [{ Name: verified_email, Priority: 1 }]
+      Policies:
+        PasswordPolicy: { MinimumLength: 8, RequireLowercase: true, RequireNumbers: true, RequireUppercase: false, RequireSymbols: false }
+      VerificationMessageTemplate:
+        DefaultEmailOption: CONFIRM_WITH_CODE
+        EmailSubject: Your SuryaCheck code
+        EmailMessage: "Your SuryaCheck verification code is {####}"
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: suryacheck-web
+      GenerateSecret: false
+      ExplicitAuthFlows: [ALLOW_USER_SRP_AUTH, ALLOW_REFRESH_TOKEN_AUTH]
+      PreventUserExistenceErrors: ENABLED
+
 Outputs:
+  UserPoolId:
+    Value: !Ref UserPool
+  UserPoolClientId:
+    Value: !Ref UserPoolClient
   ApiUrl:
     Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
   TableName:
