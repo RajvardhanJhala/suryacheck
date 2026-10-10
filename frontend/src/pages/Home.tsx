@@ -1,4 +1,4 @@
-import { go } from '../App'
+import { go } from '../LegacyApp'
 
 const DEMOS = [
   { id: 'demohemant01', name: 'Hemant · Chandkheda', blurb: '3 kW roof next to a construction site. Output sliding since the last rain.' },

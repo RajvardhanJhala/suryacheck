@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { api, ApiError, type Extraction, type Row } from '../api'
-import { go } from '../App'
+import { go } from '../LegacyApp'
 import { prepareTiles } from '../image'
 import { todayIST } from '../format'
 

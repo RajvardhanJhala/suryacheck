@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Bar, CartesianGrid, ComposedChart, Legend, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { api, type Action, type Analysis, type SiteView } from '../api'
-import { go } from '../App'
+import { go } from '../LegacyApp'
 import { ACTION_LABEL, TONE, VERDICT_LABEL, inr, shortDate, todayIST } from '../format'
 
 const NO_LOSS = new Set(['HEALTHY', 'WEATHER', 'INSUFFICIENT_DATA'])

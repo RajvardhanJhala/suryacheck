@@ -1,0 +1,71 @@
+/* SuryaCheck design tokens. Every colour has ONE meaning; see DESIGN.md. */
+@import '@fontsource-variable/fraunces';
+@import '@fontsource/noto-sans/400.css';
+@import '@fontsource/noto-sans/600.css';
+@import '@fontsource/noto-sans-devanagari/400.css';
+@import '@fontsource/noto-sans-devanagari/600.css';
+@import '@fontsource/ibm-plex-mono/400.css';
+@import '@fontsource/ibm-plex-mono/600.css';
+
+:root {
+  /* surfaces + text */
+  --paper: #f4eee2;       /* page */
+  --surface: #fbf8f1;     /* cards */
+  --sunken: #ebe3d3;      /* wells, tracks */
+  --ink: #1f1b14;         /* text */
+  --ink-2: #5b5345;       /* secondary text (AA on paper and surface) */
+  --line: #d9cfbc;        /* hairlines */
+  /* meaning */
+  --sun: #e8890c;         /* primary action + energy (fill; ink text on it) */
+  --sun-ink: #8f4a00;     /* sun as text on paper */
+  --dust: #b67d2c;        /* soiling / money lost — fills and gauges */
+  --dust-ink: #7c5313;    /* soiling text */
+  --dust-bg: #f3e3c3;
+  --clean: #1d6c74;       /* healthy / recovered */
+  --clean-bg: #d8eae8;
+  --fault: #b3361f;       /* electrical fault + errors only */
+  --fault-bg: #f6ddd5;
+  --focus: #1f1b14;
+
+  /* type */
+  --font-display: 'Fraunces Variable', Georgia, serif;
+  --font-text: 'Noto Sans', 'Noto Sans Devanagari', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --fs-xs: .75rem; --fs-sm: .875rem; --fs-md: 1rem; --fs-lg: 1.125rem; --fs-xl: 1.375rem;
+  --fs-2xl: 1.75rem; --fs-3xl: 2.25rem; --fs-4xl: 3rem; --fs-5xl: 4rem;
+
+  /* scales */
+  --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px; --s-7: 48px; --s-8: 64px; --s-9: 96px;
+  --r-xs: 4px; --r-sm: 8px; --r-md: 12px; --r-lg: 20px; --r-pill: 999px;
+  --sh-1: 0 1px 2px rgb(60 40 10 / .08);
+  --sh-2: 0 2px 4px rgb(60 40 10 / .06), 0 8px 24px rgb(60 40 10 / .08);
+  --sh-3: 0 12px 40px rgb(60 40 10 / .18);
+  --ease: cubic-bezier(.2, .7, .2, 1);
+  --dur: 600ms;
+  --tap: 44px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --paper: #14110c; --surface: #1d1913; --sunken: #0f0d09; --ink: #f1eadc; --ink-2: #b9ae9a; --line: #3a3227;
+    --sun: #f29a2e; --sun-ink: #f6b25c; --dust: #d69c4c; --dust-ink: #e5b56f; --dust-bg: #2f2414;
+    --clean: #6fc0c6; --clean-bg: #12292b; --fault: #ff8e7c; --fault-bg: #33150f; --focus: #f6b25c;
+    --sh-1: 0 1px 2px rgb(0 0 0 / .4); --sh-2: 0 2px 4px rgb(0 0 0 / .3), 0 8px 24px rgb(0 0 0 / .35);
+    --sh-3: 0 12px 40px rgb(0 0 0 / .5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme='dark'] {
+  --paper: #14110c; --surface: #1d1913; --sunken: #0f0d09; --ink: #f1eadc; --ink-2: #b9ae9a; --line: #3a3227;
+  --sun: #f29a2e; --sun-ink: #f6b25c; --dust: #d69c4c; --dust-ink: #e5b56f; --dust-bg: #2f2414;
+  --clean: #6fc0c6; --clean-bg: #12292b; --fault: #ff8e7c; --fault-bg: #33150f; --focus: #f6b25c;
+  --sh-1: 0 1px 2px rgb(0 0 0 / .4); --sh-2: 0 2px 4px rgb(0 0 0 / .3), 0 8px 24px rgb(0 0 0 / .35);
+  --sh-3: 0 12px 40px rgb(0 0 0 / .5);
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --dur: 0ms; }
+  *, *::before, *::after { animation-duration: 0ms !important; transition-duration: 0ms !important; }
+}

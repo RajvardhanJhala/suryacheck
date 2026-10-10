@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api } from '../api'
-import { go } from '../App'
+import { go } from '../LegacyApp'
 
 export default function Setup() {
   const [f, setF] = useState({ lat: '', lon: '', capacity_kwp: '3', tariff_inr: '6', cleaning_cost_inr: '200', installer_phone: '' })

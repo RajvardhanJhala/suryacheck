@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import './index.css'
 import Home from './pages/Home'
 import Setup from './pages/Setup'
 import AddData from './pages/AddData'

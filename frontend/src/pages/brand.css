@@ -1,0 +1,18 @@
+.brand-page { max-width: 1120px; margin: 0 auto; padding: var(--s-5) var(--s-4) var(--s-9); }
+.brand-head { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--s-3); margin-bottom: var(--s-7); }
+.brand-hero { display: grid; gap: var(--s-6); align-items: center; }
+.lead { font-size: var(--fs-lg); color: var(--ink-2); max-width: 34ch; }
+.nowrap { white-space: nowrap; }
+.row { display: flex; flex-wrap: wrap; gap: var(--s-3); align-items: center; }
+.row.wrap { flex-wrap: wrap; }
+.money-card { display: grid; gap: var(--s-4); justify-items: center; }
+.money-row { display: flex; gap: var(--s-6); justify-content: center; text-align: center; }
+.two-col { display: grid; gap: var(--s-6); }
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--s-3); }
+.swatch { display: grid; gap: 2px; font-size: var(--fs-sm); }
+.swatch > span:first-child { height: 64px; border-radius: var(--r-md); border: 1px solid var(--line); margin-bottom: var(--s-2); }
+.icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: var(--s-2); color: var(--ink); }
+.icon-grid span { display: grid; place-items: center; height: 40px; border-radius: var(--r-sm); background: var(--sunken); }
+@media (min-width: 768px) {
+  .brand-hero, .two-col { grid-template-columns: 1.1fr 1fr; }
+}
