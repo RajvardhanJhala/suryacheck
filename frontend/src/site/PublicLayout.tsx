@@ -18,7 +18,6 @@ export default function PublicLayout() {
         <nav id="site-menu" className={open ? 'is-open' : ''} onClick={() => setOpen(false)}>
           <NavLink to="/how-it-works">How it works</NavLink>
           <NavLink to="/sample">Sample system</NavLink>
-          <NavLink to="/login">Log in</NavLink>
           <Link className="btn btn-primary" to="/signup">Check my roof</Link>
         </nav>
       </header>
