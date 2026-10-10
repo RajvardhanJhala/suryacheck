@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Bar, CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Bar, CartesianGrid, ComposedChart, Legend, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 import { api, type Action, type Analysis, type SiteView } from '../api'
 import { go } from '../App'
 import { ACTION_LABEL, TONE, VERDICT_LABEL, inr, shortDate, todayIST } from '../format'
@@ -104,8 +104,8 @@ export default function Report({ siteId }: { siteId: string }) {
                 <YAxis tick={{ fontSize: 11 }} unit="" />
                 <Tooltip formatter={(v) => (typeof v === 'number' ? `${v.toFixed(1)} kWh` : v)} />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Bar dataKey="actual" name="Your units" fill="var(--accent)" radius={[3, 3, 0, 0]} />
-                <Line dataKey="expected" name="Sunshine allowed" stroke="var(--ink)" strokeDasharray="5 4" dot={false} strokeWidth={2} />
+                <Bar isAnimationActive={false} dataKey="actual" name="Your units" fill="var(--accent)" radius={[3, 3, 0, 0]} />
+                <Line isAnimationActive={false} dataKey="expected" name="Sunshine allowed" stroke="var(--ink)" strokeDasharray="5 4" dot={false} strokeWidth={2} />
               </ComposedChart>
             </ResponsiveContainer>
             {a.peers.n_peers > 0 && (
@@ -120,8 +120,8 @@ export default function Report({ siteId }: { siteId: string }) {
                     <YAxis domain={[60, 110]} tick={{ fontSize: 11 }} />
                     <Tooltip formatter={(v) => `${v}%`} />
                     <Legend wrapperStyle={{ fontSize: 12 }} />
-                    <Line dataKey="you" name="You" stroke="var(--accent)" strokeWidth={2.5} dot={false} />
-                    <Line dataKey="peers" name={`Neighbours (${a.peers.n_peers}${a.peers_simulated ? ', simulated' : ''})`}
+                    <Line isAnimationActive={false} dataKey="you" name="You" stroke="var(--accent)" strokeWidth={2.5} dot={false} />
+                    <Line isAnimationActive={false} dataKey="peers" name={`Neighbours (${a.peers.n_peers}${a.peers_simulated ? ', simulated' : ''})`}
                       stroke="var(--muted)" strokeWidth={2} dot={false} connectNulls />
                   </ComposedChart>
                 </ResponsiveContainer>
@@ -163,6 +163,21 @@ function RecheckCard({ action }: { action: Action }) {
         <p className="money"><span>{inr(r.recovered_inr_month)}</span> per month recovered</p>
         <p>After the cleaning, output went from {Math.round((r.pre_pi_norm ?? 0) * 100)}% to
           {' '}{Math.round(Math.min(1, r.post_pi_norm ?? 0) * 100)}% of normal, measured against the same yardstick as before.</p>
+        {r.series && r.series.length > 0 && (
+          <ResponsiveContainer width="100%" height={180}>
+            <ComposedChart data={r.series.map((p) => ({ ...p, d: shortDate(p.date) }))} margin={{ left: -18, right: 4, top: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--grid)" vertical={false} />
+              <XAxis dataKey="d" tick={{ fontSize: 11 }} minTickGap={20} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(v) => (typeof v === 'number' ? `${v.toFixed(1)} kWh` : v)} />
+              <Bar isAnimationActive={false} dataKey="actual" name="Your units" fill="var(--good)" radius={[3, 3, 0, 0]} />
+              <Line isAnimationActive={false} dataKey="expected" name="Normal for the sunshine" stroke="var(--ink)"
+                strokeDasharray="5 4" dot={false} strokeWidth={2} />
+              {r.cleaned_on && <ReferenceLine x={shortDate(r.cleaned_on)} stroke="var(--good)" strokeWidth={2}
+                label={{ value: 'Cleaned', position: 'insideTopRight', fontSize: 11, fill: 'var(--good)' }} />}
+            </ComposedChart>
+          </ResponsiveContainer>
+        )}
       </section>
     )
   }

@@ -29,6 +29,13 @@ def run_recheck(site_id, action_id):
 
     res = evaluate_recheck(daily, start, action["baseline_at_action"], action["pre_pi_norm"], as_of,
                            tariff_inr=site.get("tariff_inr", 6.0), monthly_loss_inr=action.get("monthly_loss_inr"))
+    # Two weeks before the action to today, for the before/after chart on the recheck card.
+    base = action["baseline_at_action"]
+    win = daily.loc[(daily.index >= pd.Timestamp(action["as_of"]) - pd.Timedelta(days=14)) & (daily.index <= as_of)]
+    res["series"] = [{"date": d.strftime("%Y-%m-%d"),
+                      "actual": None if pd.isna(r.kwh_actual) else round(float(r.kwh_actual), 2),
+                      "expected": round(float(r.kwh_expected) * base, 2)} for d, r in win.iterrows()]
+    res["cleaned_on"] = max((e["SK"][6:16] for e in events), default=None)
     update = {"outcome": res["outcome"], "recheck_result": res, "measured_from": start,
               "rechecked_at": datetime.now(IST).isoformat()}
     if res["outcome"] == WAITING and not action.get("rearmed"):

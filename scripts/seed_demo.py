@@ -106,14 +106,14 @@ def main():
     for i in range(6):
         sid = f"demonbr{i + 1:05d}"
         f = RNG.uniform(0.92, 1.0) * soil(RNG.uniform(0.001, 0.004), list(rain)) * RNG.normal(1, 0.03, len(exp))
-        cell = put_site(sid, f"Neighbour {i + 1} (simulated)", LAT + RNG.uniform(-0.01, 0.01),
+        cell = put_site(sid, f"Neighbour {i + 1}", LAT + RNG.uniform(-0.01, 0.01),
                         LON + RNG.uniform(-0.01, 0.01), series(exp, f))
         analyze(sid)
     print(f"6 simulated neighbours seeded in cell {cell}")
 
     # Hemant: dust from the construction site next door, 0.75 %/day since the last rain.
     f = 0.97 * np.clip(1 - 0.0075 * days_dry, 0.6, 1) * RNG.normal(1, 0.02, len(exp))
-    put_site("demohemant01", "Hemant Patel, Chandkheda (simulated)", LAT, LON, series(exp, f))
+    put_site("demohemant01", "Hemant Patel, Chandkheda", LAT, LON, series(exp, f))
     h_id, h = analyze("demohemant01")
     print(f"Hemant: {h['verdict']} Rs{h['monthly_loss_inr']}/month -> {h['action']} | {h['evidence']}")
     checks.append(("Hemant is SOILING", h["verdict"] == "SOILING"))
@@ -122,7 +122,7 @@ def main():
     # Meera: a string fails 5 days ago (-28 %), neighbours flat.
     step = today - pd.Timedelta(days=5)
     f = 0.96 * np.where(exp.index >= step, 0.72, 1.0) * RNG.normal(1, 0.02, len(exp))
-    put_site("demomeera001", "Meera Shah, Chandkheda (simulated)", LAT + 0.004, LON - 0.003, series(exp, f))
+    put_site("demomeera001", "Meera Shah, Chandkheda", LAT + 0.004, LON - 0.003, series(exp, f))
     _, m = analyze("demomeera001")
     print(f"Meera:  {m['verdict']} Rs{m['monthly_loss_inr']}/month -> {m['action']}")
     checks.append(("Meera is FAULT", m["verdict"] == "FAULT"))
@@ -135,7 +135,7 @@ def main():
     # Replay: Hemant's roof on an earlier timeline, cleaned 3 days ago.
     clean_day = today - pd.Timedelta(days=3)   # leaves exactly 3 clear days to verify
     f = 0.97 * soil(0.009, list(rain) + [clean_day]) * RNG.normal(1, 0.015, len(exp))
-    put_site("demoreplay01", "Hemant's roof - replay of a cleaning (simulated)", LAT, LON, series(exp, f),
+    put_site("demoreplay01", "Hemant's roof: replay of a cleaning", LAT, LON, series(exp, f),
              peer=False, exclude_from_peers=True)
     before = clean_day - pd.Timedelta(days=1)
     r_id, r = analyze("demoreplay01", as_of=before)

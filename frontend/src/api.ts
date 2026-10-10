@@ -31,7 +31,7 @@ export type Site = {
 export type Action = {
   actionId?: string; SK?: string; type: string; outcome: string; recheck_at?: string; whatsapp_url?: string | null
   as_of: string; monthly_loss_inr: number; next_step?: string
-  recheck_result?: { outcome: string; recovered_inr_month?: number; pre_pi_norm?: number; post_pi_norm?: number; hc_days_after?: number }
+  recheck_result?: { outcome: string; recovered_inr_month?: number; pre_pi_norm?: number; post_pi_norm?: number; hc_days_after?: number; cleaned_on?: string | null; series?: { date: string; actual: number | null; expected: number }[] }
 }
 
 export type SiteView = {

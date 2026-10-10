@@ -11,7 +11,7 @@ from datetime import date, datetime, timedelta
 import boto3
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.event_handler import APIGatewayHttpResolver, Response
-from aws_lambda_powertools.event_handler.exceptions import BadRequestError, NotFoundError
+from aws_lambda_powertools.event_handler.exceptions import BadRequestError, NotFoundError, ServiceError
 
 from shared import caps, ddb
 from shared.geo import geohash
@@ -54,6 +54,14 @@ def _site(site_id):
     site = ddb.get(ddb.site_pk(site_id), "META")
     if not site:
         raise NotFoundError("Unknown site")
+    return site
+
+
+def _writable(site_id):
+    """Demo homes are read-only so nobody can change the demo before it is recorded."""
+    site = _site(site_id)
+    if site.get("simulated"):
+        raise ServiceError(403, "This is a read-only demo home. Check your own roof instead.")
     return site
 
 
@@ -109,7 +117,7 @@ def get_site(site_id):
 
 @app.post("/sites/<site_id>/uploads")
 def create_uploads(site_id):
-    _site(site_id)
+    _writable(site_id)
     b = _body()
     n = int(_num(b, "tiles", 1, MAX_TILES, 1))
     ctype = b.get("contentType", "image/jpeg")
@@ -128,7 +136,7 @@ def create_uploads(site_id):
 @app.post("/sites/<site_id>/extractions")
 def extract(site_id):
     from api.extraction import extract_rows   # imported lazily: needs Pillow + Bedrock
-    _site(site_id)
+    _writable(site_id)
     keys = _body().get("keys") or []
     if not keys or len(keys) > MAX_TILES or not all(str(k).startswith(f"uploads/{site_id}/") for k in keys):
         raise BadRequestError(f"keys must be 1-{MAX_TILES} upload keys for this site")
@@ -147,7 +155,7 @@ def extract(site_id):
 
 @app.put("/sites/<site_id>/readings")
 def put_readings(site_id):
-    site = _site(site_id)
+    site = _writable(site_id)
     b = _body()
     rows, source = b.get("rows") or [], b.get("source", "manual")
     if source not in ("screenshot", "csv", "manual"):
@@ -182,7 +190,7 @@ def put_readings(site_id):
 def add_meter_reading(site_id):
     """A cumulative generation-meter reading. Two readings a few days apart give the average
     daily generation in between, written as DAY rows (source=meter)."""
-    site = _site(site_id)
+    site = _writable(site_id)
     b = _body()
     try:
         d = date.fromisoformat(str(b.get("date")))
@@ -214,7 +222,7 @@ def add_meter_reading(site_id):
 
 @app.post("/sites/<site_id>/events")
 def add_event(site_id):
-    _site(site_id)
+    _writable(site_id)
     b = _body()
     etype = b.get("type")
     if etype not in ("CLEANED", "REPAIR"):
@@ -231,7 +239,7 @@ def add_event(site_id):
 
 @app.post("/sites/<site_id>/analyses")
 def start_analysis(site_id):
-    _site(site_id)
+    _writable(site_id)
     b = _body()
     as_of = b.get("as_of")
     if as_of is not None:

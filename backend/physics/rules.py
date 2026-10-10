@@ -9,6 +9,14 @@ HEALTHY_MED3 = 0.92
 TRIP, FAULT, SOILING, WEATHER, PERSISTENT_LOW, STEADY_LOSS = (
     "INVERTER_TRIP", "FAULT", "SOILING", "WEATHER", "PERSISTENT_LOW", "STEADY_LOSS")
 HEALTHY, UNEXPLAINED, INSUFFICIENT = "HEALTHY", "UNEXPLAINED", "INSUFFICIENT_DATA"
+
+
+def _d(iso):
+    """'2026-09-20' -> '20 Sep' for people, not machines."""
+    from datetime import date
+    return date.fromisoformat(iso).strftime("%d %b").lstrip("0")
+
+
 PRECEDENCE = [TRIP, FAULT, SOILING, WEATHER, PERSISTENT_LOW, STEADY_LOSS]
 
 # Mirrors backend/policies/actions.cedar; tests/test_authz.py checks they agree.
@@ -55,7 +63,7 @@ def score_causes(perf, peers, cleaning_cost_inr=200.0):
     if perf.trip_days:
         grid = set(perf.trip_days) & set(peers.get("peer_trip_like_days", []))
         scores[TRIP] = 0.6 if grid else 0.95
-        evidence.append(f"Near-zero output on {', '.join(perf.trip_days)}"
+        evidence.append(f"Near-zero output on {', '.join(_d(d) for d in perf.trip_days)}"
                         + (" (neighbours too: likely grid outage)" if grid else "") + ".")
 
     step = _recent_fault_step(perf)
@@ -64,7 +72,7 @@ def score_causes(perf, peers, cleaning_cost_inr=200.0):
         peers_flat = pd_ is None or pd_ > -0.05
         if peers_flat:
             scores[FAULT] = 0.9 if n_peers >= 3 else 0.7
-            evidence.append(f"Output stepped down {abs(step['delta']):.0%} on {step['date']} and stayed down"
+            evidence.append(f"Output stepped down {abs(step['delta']):.0%} on {_d(step['date'])} and stayed down"
                             + (" while neighbours held steady." if n_peers >= 3 else "."))
 
     if (FAULT not in scores and perf.segment_hc_days >= 7 and perf.segment_slope is not None
@@ -76,7 +84,7 @@ def score_causes(perf, peers, cleaning_cost_inr=200.0):
         if psd is not None and psd < perf.segment_decline / 2:
             s += 0.05
         scores[SOILING] = min(s, 0.9)
-        evidence.append(f"Since {perf.segment_start} (last rain or cleaning) output slid "
+        evidence.append(f"Since {_d(perf.segment_start)} (after the last rain or cleaning) output slid "
                         f"{perf.segment_decline:.0%} at {abs(perf.segment_slope):.2%}/day.")
 
     p7, you7 = peers.get("peer_pi_norm_med7"), perf.med7_latest

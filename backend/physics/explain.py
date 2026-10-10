@@ -15,12 +15,12 @@ ACTION_TEXT = {
 }
 
 HEADLINE = {
-    "SOILING": "Dust is costing you about ₹{loss:,.0f} a month.",
-    "FAULT": "A sudden drop looks like an electrical fault — about ₹{loss:,.0f} a month.",
+    "SOILING": "Dust on your panels is costing you money.",
+    "FAULT": "A sudden drop looks like an electrical fault, not dust.",
     "INVERTER_TRIP": "Your system produced almost nothing on a sunny day.",
     "WEATHER": "It's the weather, not your system — your neighbours dipped too.",
-    "PERSISTENT_LOW": "Your system has always produced less than it should — about ₹{loss:,.0f} a month.",
-    "STEADY_LOSS": "Output is steadily below your best week — about ₹{loss:,.0f} a month.",
+    "PERSISTENT_LOW": "Your system has always produced less than it should.",
+    "STEADY_LOSS": "Output is steadily below your best week.",
     "UNEXPLAINED": "Output is lower than expected and the cause isn't clear yet.",
     "HEALTHY": "Your panels are making what the sunshine allowed.",
     "INSUFFICIENT_DATA": "Not enough clear days of data yet.",

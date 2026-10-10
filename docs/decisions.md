@@ -45,3 +45,10 @@
   - Replay: dust at 0.9%/day (within the 1%/day cap) → ₹222/month → CLEAN_PANELS → RECOVERED.
 - On the first seed attempt the replay loss was ₹166, under the ₹200 cleaning cost, so the rules and Cedar correctly chose WAIT. That was a timeline problem in the demo story, not a bug.
 - When Bedrock is unavailable, `physics/explain.py` builds the headline, the "why" and the "what to do" from computed numbers only.
+
+## 2026-10-10: Visual QA, and demo homes made read-only
+- Playwright screenshots at 390 px found empty charts. The Recharts entry animation never painted, so animation is now off (`isAnimationActive={false}`).
+- The replay chart ended before the cleaning, so the recovery jump was invisible. The recheck now stores a before/after series plus `cleaned_on`, and the recheck card draws it with a "Cleaned" marker.
+- Wording fixes: headlines no longer repeat the ₹ figure, evidence dates read "20 Sep" instead of ISO dates, and "(simulated)" was removed from labels because the badge already says it.
+- Security: anyone could write readings to a demo home. Data-changing routes now return 403 for `simulated` sites. Actions stay allowed, because the demo flow taps them.
+- The seed is relative to today, so its ₹ figures drift daily (Hemant went from ₹294 to ₹366). Re-run `seed_demo.py` on recording day.

@@ -50,6 +50,8 @@ def main():
     checks.append(("bad lon rejected", s == 400))
     s, b = call("GET", "/sites/doesnotexist")
     checks.append(("unknown site 404", s == 404))
+    s, b = call("PUT", "/sites/demohemant01/readings", {"rows": [{"date": "2026-10-01", "kwh": 1}]})
+    checks.append(("demo home is read-only (403)", s == 403))
 
     s, b = call("POST", "/sites", {"lat": LAT, "lon": LON, "capacity_kwp": KWP})
     assert s == 201, (s, b)

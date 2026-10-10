@@ -73,7 +73,7 @@ export default function AddData({ siteId }: { siteId: string }) {
     <div className="panel">
       <h1>Add your daily units</h1>
       <div className="tabs" role="tablist">
-        {([['camera', '📷 Photo'], ['screenshot', '🖼 Screenshot'], ['type', '⌨ Type']] as [Mode, string][]).map(([m, l]) => (
+        {([['camera', '📷 Photo'], ['screenshot', '🖼 Upload'], ['type', '⌨ Type']] as [Mode, string][]).map(([m, l]) => (
           <button key={m} role="tab" aria-selected={mode === m} className={mode === m ? 'tab on' : 'tab'}
             onClick={() => { setMode(m); setErr(''); if (m === 'type' && !rows) setRows(lastDays(7)) }}>{l}</button>
         ))}
