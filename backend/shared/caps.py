@@ -15,6 +15,8 @@ GLOBAL_LIMITS = {
     "sites_created": int(os.environ.get("CAP_SITES", 50)),
     "rechecks_manual": int(os.environ.get("CAP_RECHECKS", 20)),
     "classifications": int(os.environ.get("CAP_CLASSIFICATIONS", 300)),
+    "place_searches": int(os.environ.get("CAP_PLACE_SEARCHES", 200)),
+    "bookings": int(os.environ.get("CAP_BOOKINGS", 50)),
 }
 PER_SITE_BEDROCK = int(os.environ.get("CAP_SITE_BEDROCK", 20))
 

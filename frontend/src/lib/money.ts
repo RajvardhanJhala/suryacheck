@@ -61,25 +61,38 @@ export function breakEvenDays(inp: MoneyInputs): number | null {
   return savedPerDay > 0 ? Math.ceil(inp.cleaningCost / savedPerDay) : null
 }
 
-/** Historic ₹ lost per calendar month from the analysis series (days with a reading only). */
-export function historicMonthly(series: { date: string; actual: number | null; expected: number }[], tariff: number) {
-  const m = new Map<string, number>()
-  for (const p of series) {
-    if (p.actual == null) continue
-    const k = p.date.slice(0, 7)
-    m.set(k, (m.get(k) ?? 0) + Math.max(0, p.expected - p.actual) * tariff)
-  }
-  return [...m.entries()].map(([month, inr]) => ({ month, lossInr: Math.round(inr) }))
-}
-
-/** Inputs from an analysis: normal = expected × your best week; dust rate = slope since last rain/cleaning. */
-export function inputsFromAnalysis(a: { as_of: string; performance: { mean_expected_kwh: number; baseline_pi: number;
-  med3_latest: number | null; segment_slope: number | null } }, tariff: number, cleaningCost: number): MoneyInputs {
+/** Inputs from an analysis: normal = expected × your best week; dust rate = slope since last rain/cleaning.
+ *  Today's loss is taken from the backend's monthly_loss_inr (the ONE loss figure shown everywhere), so
+ *  day 1 of every projection costs exactly monthly_loss_inr ÷ 30. */
+export function inputsFromAnalysis(a: { as_of: string; monthly_loss_inr: number; performance: { mean_expected_kwh: number;
+  baseline_pi: number; segment_slope: number | null } }, tariff: number, cleaningCost: number): MoneyInputs {
   const p = a.performance
+  const normalKwh = p.mean_expected_kwh * p.baseline_pi
   return {
-    normalKwh: p.mean_expected_kwh * p.baseline_pi,
-    lossNow: Math.max(0, 1 - (p.med3_latest ?? 1)),
+    normalKwh,
+    lossNow: normalKwh > 0 && tariff > 0 ? Math.min(LOSS_CAP, Math.max(0, a.monthly_loss_inr / 30 / (normalKwh * tariff))) : 0,
     dustRate: Math.max(0, -(p.segment_slope ?? 0)),
     tariff, cleaningCost, today: a.as_of,
   }
+}
+
+/** Running total of ₹ (dust loss + cleaning cost) for each of the next 365 days.
+ *  cleanOn = the day index of one cleaning, or null to never clean. */
+export function cumulative(inp: MoneyInputs, cleanOn: number | null): number[] {
+  const out: number[] = []
+  const start = new Date(inp.today + 'T00:00:00')
+  let loss = inp.lossNow, total = 0
+  for (let i = 0; i < 365; i++) {
+    const d = new Date(start); d.setDate(start.getDate() + i)
+    if (i === cleanOn) { loss = 0; total += inp.cleaningCost }
+    if (isMonsoon(d)) loss = 0
+    else { total += loss * inp.normalKwh * inp.tariff; loss = Math.min(LOSS_CAP, loss + inp.dustRate) }
+    out.push(total)
+  }
+  return out
+}
+
+/** ₹ a cleaning today saves over the next year (before its cost): never-clean loss − clean-today loss. */
+export function recoveredPerCleaning(inp: MoneyInputs): number {
+  return Math.max(0, cumulative(inp, null)[364] - (cumulative(inp, 0)[364] - inp.cleaningCost))
 }

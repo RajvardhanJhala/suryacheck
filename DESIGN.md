@@ -94,6 +94,48 @@ There's one custom line family: a 24-unit grid, 1.75 stroke, round caps and join
 - `Notice`: an inline success, error or info message, always with an icon and a title.
 - `ArcGauge`, `ArcLoader`, `ArcDivider`, `Logo` and `LogoMark`: the motif components.
 
+## The app: one path, "Test your roof"
+Routes: `/` landing, `/test` the flow, `/r/:id` a saved report, `/history`, `/settings`, `/how-it-works`.
+The old `/app/*` and `/sample/*` addresses redirect to these. Navigation has three items, Test, History
+and Settings: a slim top bar on desktop and a bottom bar on mobile.
+
+`/test` is one page.
+1. **Two questions only.** Where the roof is, from browser location, then photo EXIF GPS, then an area
+   or PIN code typed in. The page shows the locality name. The second question is system size,
+   prefilled at 3 kWp. Everything else (tilt 23°, south, ₹6/unit, ₹200 per cleaning, install date)
+   sits under one collapsed "Adjust assumptions". No setup form comes first.
+2. **Three capture cards.** Inverter (required), net meter (optional) and panel photos (optional, live
+   camera, 1–3 shots). Each card has one action. A used card shows its thumbnail with a tick, and the
+   numbers read from it appear as editable chips (Amazon Textract reads them; you confirm them).
+3. **Check my roof.** The progress line shows the analysis job's real stages (photos → sunshine →
+   compare → diagnose); the job writes its stage to DynamoDB. If a step fails, the message names the
+   step.
+4. **Results on the same page.** The inputs collapse into a "Your readings" line with "Edit and
+   re-run". On top: the gauge, one verdict word (colour plus icon plus word), one sentence built from
+   computed numbers, and the money. Below that: collapsed sections (actual vs expected, panel photos,
+   money over 12 months, method, nearby roofs only when real), then cleaners nearby, then
+   Save/PDF/Recheck.
+
+Sample mode is the same page (`/test?sample=…`), with a visible "Sample data" badge.
+
+**One loss definition, everywhere:** *units below what the sunshine allowed on clear days, at your
+electricity rate* (the backend's `monthly_loss_inr`). The 12-month projection starts at exactly that
+rate, which `money.check.ts` asserts.
+
+**Cleaners** come from a backend `CleaningProvider` adapter. Today that is Amazon Location Service
+Places: real businesses only, with no invented names, ratings or prices. Call is offered when a phone
+number exists, and WhatsApp only for Indian mobile numbers. A booking request is logged in DynamoDB
+and emailed to `OpsEmail` when one is configured.
+
+## Declutter rules (every screen)
+- Every element is either an input the result depends on, or part of the answer. Anything else is
+  deleted.
+- At most one primary button per screen.
+- Show the answer first; detail stays collapsed until asked for. Charts render only when their
+  section opens.
+- No info box repeats nearby text, and no card restates another card.
+- Spacing, radius and type come from the existing tokens only; no new colours.
+
 ## Icons and social images
 `python scripts/make_icons.py` generates, from the same mark geometry:
 - `favicon.svg`, `favicon.ico`, and 16 and 32 px PNGs;

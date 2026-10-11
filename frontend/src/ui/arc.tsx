@@ -29,7 +29,7 @@ export function Logo({ size = 28 }: { size?: number }) {
 }
 
 /** Performance-ratio gauge. `value` is 0..1.1 of normal; colour follows meaning, text says it too. */
-export function ArcGauge({ value, label, size = 260 }: { value: number; label?: string; size?: number }) {
+export function ArcGauge({ value, label, size = 260 }: { value: number; label?: string | null; size?: number }) {
   const [shown, setShown] = useState(reducedMotion() ? value : 0)
   useEffect(() => { const id = requestAnimationFrame(() => setShown(value)); return () => cancelAnimationFrame(id) }, [value])
   const t = Math.max(0, Math.min(1, shown))
@@ -53,7 +53,7 @@ export function ArcGauge({ value, label, size = 260 }: { value: number; label?: 
       </svg>
       <figcaption>
         <span className="reading xl">{Math.round(value * 100)}<small>%</small></span>
-        <span className={`gauge-label ${healthy ? 'is-clean' : 'is-dust'}`}>{label ?? (healthy ? 'Healthy' : 'Below normal')}</span>
+        {label !== null && <span className={`gauge-label ${healthy ? 'is-clean' : 'is-dust'}`}>{label ?? (healthy ? 'Healthy' : 'Below normal')}</span>}
       </figcaption>
     </figure>
   )

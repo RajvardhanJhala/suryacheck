@@ -14,12 +14,20 @@ APP_NAME, BRANCH, REGION = "suryacheck", "main", "ap-south-1"
 DIST = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
 
 amp = boto3.client("amplify", region_name=REGION)
+# Single-page app: send unknown paths to index.html, never real static files (manifest, sitemap, icons).
+RULES = [{"source": "</^[^.]+$|\\.(?!(css|gif|ico|jpg|jpeg|js|png|txt|svg|woff|woff2|ttf|map|json|webp|webmanifest|xml|pdf)$)([^.]+$)/>",
+          "target": "/index.html", "status": "200"}]
 app = next((a for a in amp.list_apps()["apps"] if a["name"] == APP_NAME), None)
 if app is None:
-    app = amp.create_app(name=APP_NAME, platform="WEB", customRules=[
-        # Single-page app: send unknown paths to index.html.
-        {"source": "</^[^.]+$|\\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json|webp)$)([^.]+$)/>",
-         "target": "/index.html", "status": "200"}])["app"]
+    app = amp.create_app(name=APP_NAME, platform="WEB", customRules=RULES)["app"]
+HEADERS = """customHeaders:
+  - pattern: '**/*.webmanifest'
+    headers:
+      - key: Content-Type
+        value: application/manifest+json
+"""
+if app.get("customRules") != RULES or app.get("customHeaders") != HEADERS:
+    app = amp.update_app(appId=app["appId"], customRules=RULES, customHeaders=HEADERS)["app"]
 app_id = app["appId"]
 if not any(b["branchName"] == BRANCH for b in amp.list_branches(appId=app_id)["branches"]):
     amp.create_branch(appId=app_id, branchName=BRANCH, stage="PRODUCTION")

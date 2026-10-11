@@ -29,6 +29,7 @@ export type Site = {
   lat: number; lon: number; capacity_kwp: number; tariff_inr: number; cleaning_cost_inr: number
   installer_phone?: string | null; simulated?: boolean; label?: string
   tilt?: number; azimuth?: number; install_date?: string | null; language?: 'en' | 'hi'; notify_email?: boolean
+  locality?: string | null
 }
 
 export type Action = {
@@ -47,7 +48,7 @@ export type AnalysisSummary = { analysisId: string; status: string; as_of?: stri
 
 export type Performance = {
   segment_start: string; baseline_pi: number; segment_slope: number | null; segment_decline: number | null
-  med3_latest: number | null; med7_latest: number | null; mean_expected_kwh: number; hc_days: number
+  med3_latest: number | null; med7_latest: number | null; med14_abs_pi?: number | null; mean_expected_kwh: number; hc_days: number
   steps: { date: string; delta: number }[]; trip_days: string[]
 }
 
@@ -57,7 +58,7 @@ export type SeriesPoint = {
 }
 
 export type Analysis = {
-  status: 'PENDING' | 'DONE' | 'FAILED'; error?: string; as_of: string; verdict: string
+  status: 'PENDING' | 'DONE' | 'FAILED'; stage?: 'weather' | 'compare' | 'diagnose' | 'done'; error?: string; as_of: string; verdict: string
   action: string; allowed_actions: Record<string, string[]>; tie_candidates: string[]
   monthly_loss_inr: number; window_loss_inr: number; evidence: string[]; recheck_days: number | null
   explanation: { headline: string; why: string; what_to_do: string }; explanation_source: string
@@ -78,6 +79,7 @@ export type Extraction = {
 }
 
 type PresignedPost = { key: string; url: string; fields: Record<string, string> }
+export type Cleaner = { id: string; name: string; distance_km: number; area: string | null; phone: string | null; source: string }
 
 export const api = {
   createSite: (b: Partial<Site>) => call<{ siteId: string }>('POST', '/sites', b),
@@ -107,30 +109,22 @@ export const api = {
     }))
     return uploads.map((u) => u.key)
   },
+  cleaners: (id: string) => call<{ providers: Cleaner[]; source: string; radius_km: number }>('GET', `/sites/${id}/cleaners`),
+  book: (id: string, provider: Pick<Cleaner, 'id' | 'name' | 'phone'>, analysisId: string | null) =>
+    call<{ status: 'LOGGED' | 'EMAILED'; requested_at: string }>('POST', `/sites/${id}/bookings`, { provider, analysisId }),
+  locality: (lat: number, lon: number) => call<{ label: string | null }>('GET', `/geocode?lat=${lat}&lon=${lon}`),
+  geocode: (q: string) => call<{ lat: number; lon: number; label: string }>('GET', `/geocode?q=${encodeURIComponent(q)}`),
   classifyPhoto: (id: string, key: string) => call<PhotoClass>('POST', `/sites/${id}/photos/classify`, { key }),
   extract: (id: string, keys: string[], kind: EvidenceKind) => call<Extraction>('POST', `/sites/${id}/extractions`, { keys, kind }),
 
-  async uploadAndExtract(id: string, tiles: Blob[]): Promise<Extraction> {
-    const { uploads } = await call<{ uploads: PresignedPost[] }>('POST', `/sites/${id}/uploads`,
-      { tiles: tiles.length, contentType: 'image/jpeg' })
-    await Promise.all(uploads.map(async (u, i) => {
-      const form = new FormData()
-      Object.entries(u.fields).forEach(([k, v]) => form.append(k, v))
-      form.append('file', tiles[i])
-      const r = await fetch(u.url, { method: 'POST', body: form })
-      if (!r.ok) throw new Error('Upload failed. Is the image under 3.75 MB?')
-    }))
-    return call<Extraction>('POST', `/sites/${id}/extractions`, { keys: uploads.map((u) => u.key) })
-  },
-
-  async waitForAnalysis(id: string, aid: string, onTick?: (s: number) => void): Promise<Analysis> {
+  async waitForAnalysis(id: string, aid: string, onTick?: (a: Analysis) => void): Promise<Analysis> {
     const t0 = Date.now()
     for (;;) {
       const a = await api.getAnalysis(id, aid)
       if (a.status !== 'PENDING') return a
       if (Date.now() - t0 > 120_000) throw new Error('The check is taking too long. Please try again.')
-      onTick?.(Math.round((Date.now() - t0) / 1000))
-      await new Promise((r) => setTimeout(r, 2500))
+      onTick?.(a)
+      await new Promise((r) => setTimeout(r, 1500))
     }
   },
 }

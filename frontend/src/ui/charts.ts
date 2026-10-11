@@ -13,4 +13,3 @@ export const tooltip = {
 }
 export const legend = { wrapperStyle: { fontFamily: 'var(--font-text)', fontSize: 12, color: 'var(--ink-2)' } }
 export const shortDate = (iso: string) => new Date(iso + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })
-export const monthLabel = (ym: string) => new Date(ym + '-01T00:00:00').toLocaleDateString('en-IN', { month: 'short', year: '2-digit' })

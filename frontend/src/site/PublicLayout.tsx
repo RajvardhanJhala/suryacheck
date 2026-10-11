@@ -9,7 +9,7 @@ export default function PublicLayout() {
     <div className="site">
       <a className="skip" href="#main">Skip to content</a>
       <p className="announce"><span className="announce-tag">New</span> Read your inverter or meter with your phone camera.{' '}
-        <Link to="/app">Try it <Icon name="arrowRight" size={14} /></Link></p>
+        <Link to="/test">Try it <Icon name="arrowRight" size={14} /></Link></p>
       <header className="site-nav">
         <Link to="/" aria-label="SuryaCheck home"><Logo size={30} /></Link>
         <button className="btn btn-ghost nav-toggle" aria-expanded={open} aria-controls="site-menu" onClick={() => setOpen(!open)}>
@@ -17,8 +17,8 @@ export default function PublicLayout() {
         </button>
         <nav id="site-menu" className={open ? 'is-open' : ''} onClick={() => setOpen(false)}>
           <NavLink to="/how-it-works">How it works</NavLink>
-          <NavLink to="/sample">Sample system</NavLink>
-          <Link className="btn btn-primary" to="/app">Check my roof</Link>
+          <NavLink to="/test?sample=demohemant01">Sample roof</NavLink>
+          <Link className="btn btn-primary" to="/test">Test your roof</Link>
         </nav>
       </header>
       <main id="main"><Outlet /></main>
@@ -27,7 +27,7 @@ export default function PublicLayout() {
         <p className="muted">Built for Environmental Hacks 2026 (AWS × WeMakeDevs). Weather data:{' '}
           <a href="https://open-meteo.com" target="_blank" rel="noreferrer">Open-Meteo</a> (CC BY 4.0). Solar model:{' '}
           <a href="https://pvlib-python.readthedocs.io" target="_blank" rel="noreferrer">pvlib</a>. Runs on AWS.</p>
-        <nav className="foot-links"><Link to="/how-it-works">Methodology</Link><Link to="/sample">Sample system</Link></nav>
+        <nav className="foot-links"><Link to="/how-it-works">Methodology</Link><Link to="/test?sample=demohemant01">Sample roof</Link></nav>
       </footer>
     </div>
   )

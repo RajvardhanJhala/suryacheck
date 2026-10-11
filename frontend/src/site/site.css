@@ -68,7 +68,8 @@
 
 /* stacked status cards that slide in, staircase-offset (after heycubit.github.io/effortless) */
 .signals { display: grid; gap: var(--s-6); align-items: center; }
-.signal-stack { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); }
+/* overflow-x clip: the 60px slide-in offset of not-yet-visible cards must not widen the page */
+.signal-stack { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); overflow-x: clip; min-width: 0; }
 .signal { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--s-1) var(--s-3); padding: var(--s-3) var(--s-4);
   background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--tone); border-radius: var(--r-md); box-shadow: var(--sh-1); }
 .signal > svg:first-child { color: var(--tone); grid-row: span 2; }
@@ -192,26 +193,24 @@
 .set-sun-disc { animation: setting 2.4s var(--ease) both; }
 @keyframes setting { from { transform: translate(-30px, -40px); } to { transform: none; } }
 
-/* app shell */
+/* app shell: slim top bar (desktop) + three-item tab bar (mobile) */
 .app { min-height: 100vh; }
-.sidebar { display: none; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: var(--s-4); padding: var(--s-2) var(--s-4);
+  border-bottom: 1px solid var(--line); background: var(--surface); position: sticky; top: 0; z-index: 5; }
+.topbar > a { display: inline-flex; min-height: var(--tap); align-items: center; text-decoration: none; color: var(--ink); }
+.topnav { display: none; }
 .app-main { padding: var(--s-5) var(--s-4) calc(var(--s-9) + var(--s-4)); max-width: 1100px; margin: 0 auto; }
-.tabbar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 5; display: grid; grid-template-columns: repeat(5, 1fr);
+.tabbar { position: fixed; bottom: 0; left: 0; right: 0; z-index: 5; display: grid; grid-template-columns: repeat(3, 1fr);
   background: var(--surface); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
 .tabbar a { display: grid; justify-items: center; gap: 2px; padding: var(--s-2) 0; min-height: 56px; font-size: var(--fs-xs);
   font-weight: 600; color: var(--ink-2); text-decoration: none; }
 .tabbar a.active { color: var(--sun-ink); }
-@media (min-width: 960px) {
-  .app { display: grid; grid-template-columns: 248px 1fr; }
+@media (min-width: 760px) {
   .tabbar { display: none; }
-  .sidebar { display: flex; flex-direction: column; gap: var(--s-5); position: sticky; top: 0; height: 100vh; padding: var(--s-5) var(--s-4);
-    border-right: 1px solid var(--line); background: var(--surface); }
-  .sidebar nav { display: grid; gap: var(--s-1); }
-  .sidebar nav a { display: flex; align-items: center; gap: var(--s-3); padding: 0 var(--s-3); min-height: var(--tap); border-radius: var(--r-md);
+  .topnav { display: flex; gap: var(--s-1); }
+  .topnav a { display: inline-flex; align-items: center; gap: var(--s-2); padding: 0 var(--s-3); min-height: var(--tap); border-radius: var(--r-pill);
     color: var(--ink); text-decoration: none; font-weight: 600; }
-  .sidebar nav a:hover { background: var(--sunken); }
-  .sidebar nav a.active { background: var(--sunken); color: var(--sun-ink); box-shadow: inset 3px 0 0 var(--sun); }
-  .sidebar-foot { margin-top: auto; display: grid; gap: var(--s-2); }
-  .sidebar-foot .muted { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .app-main { padding: var(--s-6) var(--s-6) var(--s-8); margin: 0; }
+  .topnav a:hover { background: var(--sunken); }
+  .topnav a.active { background: var(--sunken); color: var(--sun-ink); }
+  .app-main { padding: var(--s-6) var(--s-5) var(--s-8); }
 }

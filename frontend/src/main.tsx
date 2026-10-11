@@ -1,6 +1,6 @@
 import { Component, StrictMode, lazy, Suspense, type ReactNode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { BrowserRouter, Route, Routes } from 'react-router'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router'
 import './ui/base.css'
 import './site/site.css'
 import './app/app.css'
@@ -11,15 +11,16 @@ import { ArcLoader } from './ui/arc'
 
 const HowItWorks = lazy(() => import('./site/HowItWorks'))
 const AppShell = lazy(() => import('./app/AppShell'))
-const Placeholder = lazy(() => import('./app/Placeholder'))
-const Overview = lazy(() => import('./app/Overview'))
-const NewCheck = lazy(() => import('./app/NewCheck'))
-const Report = lazy(() => import('./app/Report'))
-const Money = lazy(() => import('./app/Money'))
+const TestRoof = lazy(() => import('./app/TestRoof'))
+const History = lazy(() => import('./app/History'))
 const MySystem = lazy(() => import('./app/MySystem'))
 const Brand = lazy(() => import('./pages/Brand'))
-// shortcut: old screens stay at /legacy until step 3 replaces them.
-const Legacy = lazy(() => import('./LegacyApp'))
+
+/** Old /sample/* links open the same results page with the sample loaded. */
+function SampleRedirect() {
+  const site = new URLSearchParams(useLocation().search).get('site') ?? 'demohemant01'
+  return <Navigate to={`/test?sample=${site}`} replace />
+}
 
 class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
@@ -49,26 +50,18 @@ createRoot(document.getElementById('root')!).render(
               <Route path="how-it-works" element={<HowItWorks />} />
               <Route path="*" element={<NotFound />} />
             </Route>
-            <Route path="app" element={<AppShell mode="app" />}>
-              <Route index element={<Overview />} />
-              <Route path="check" element={<NewCheck />} />
-              <Route path="report" element={<Report />} />
-              <Route path="money" element={<Money />} />
-              <Route path="clean" element={<Placeholder title="Get it cleaned" />} />
-              <Route path="history" element={<Placeholder title="History" />} />
+            <Route element={<AppShell />}>
+              <Route path="test" element={<TestRoof />} />
+              <Route path="r/:id" element={<TestRoof />} />
+              <Route path="history" element={<History />} />
               <Route path="settings" element={<MySystem />} />
             </Route>
-            <Route path="sample" element={<AppShell mode="sample" />}>
-              <Route index element={<Overview />} />
-              <Route path="check" element={<NewCheck />} />
-              <Route path="report" element={<Report />} />
-              <Route path="money" element={<Money />} />
-              <Route path="clean" element={<Placeholder title="Get it cleaned" />} />
-              <Route path="history" element={<Placeholder title="History" />} />
-              <Route path="settings" element={<MySystem />} />
-            </Route>
+            <Route path="app/history" element={<Navigate to="/history" replace />} />
+            <Route path="app/settings" element={<Navigate to="/settings" replace />} />
+            <Route path="app/*" element={<Navigate to="/test" replace />} />
+            <Route path="sample/*" element={<SampleRedirect />} />
+            <Route path="legacy" element={<Navigate to="/test" replace />} />
             <Route path="brand" element={<Brand />} />
-            <Route path="legacy" element={<Legacy />} />
           </Routes>
         </Suspense>
       </ErrorBoundary>

@@ -97,9 +97,14 @@ def _site_fields(b):
     }
 
 
+def _with_locality(site):
+    from shared.cleaners import provider
+    return {**site, "locality": provider().locality(site["lat"], site["lon"])}
+
+
 @app.post("/sites")
 def create_site():
-    site = {**_site_fields(_body()), "simulated": False}
+    site = _with_locality({**_site_fields(_body()), "simulated": False})
     try:
         caps.take_global("sites_created")
     except caps.CapExceeded:
@@ -113,6 +118,8 @@ def create_site():
 @app.put("/sites/<site_id>")
 def update_site(site_id):
     site, fields = _writable(site_id), _site_fields(_body())
+    if (fields["lat"], fields["lon"]) != (site.get("lat"), site.get("lon")) or not site.get("locality"):
+        fields = _with_locality(fields)
     ddb.put({**site, **fields, "GSI1PK": f"GEO#{fields['geohash5']}"})
     return {"siteId": site_id}
 
@@ -406,6 +413,69 @@ def demo_recheck(site_id, action_id):
     resp = lam.invoke(FunctionName=AGENT_FN, Payload=json.dumps(
         {"mode": "recheck", "site_id": site_id, "action_id": action_id}).encode())
     return json.loads(resp["Payload"].read())
+
+
+@app.get("/geocode")
+def geocode():
+    """Area name or PIN code -> position (for people who decline browser location), or
+    ?lat=&lon= -> locality name. India only."""
+    from shared.cleaners import provider
+    ev = app.current_event
+    if ev.get_query_string_value("lat") is not None:
+        qs = {"lat": ev.get_query_string_value("lat"), "lon": ev.get_query_string_value("lon")}
+        lat, lon = _num(qs, "lat", 6, 37), _num(qs, "lon", 68, 98)
+        return {"lat": lat, "lon": lon, "label": provider().locality(lat, lon)}
+    q = (ev.get_query_string_value("q") or "").strip()[:100]
+    if len(q) < 3:
+        raise BadRequestError("q must be at least 3 characters")
+    try:
+        caps.take_global("place_searches")
+    except caps.CapExceeded:
+        return _too_many("place searches")
+    hit = provider().geocode(q)
+    if not hit:
+        raise NotFoundError("No place found in India for that name")
+    return hit
+
+
+@app.get("/sites/<site_id>/cleaners")
+def cleaners(site_id):
+    """Real solar businesses near the roof, cached per neighbourhood per day."""
+    from shared.cleaners import SOURCE, provider
+    site = _site(site_id)
+    pk, sk = f"CLEANERS#{site['geohash5']}", f"DAY#{caps.today_ist()}"
+    cached = ddb.get(pk, sk)
+    if cached:
+        found = cached["providers"]
+    else:
+        try:
+            caps.take_global("place_searches")
+        except caps.CapExceeded:
+            return _too_many("cleaner searches")
+        try:
+            found = provider().search(site["lat"], site["lon"])
+        except Exception:      # noqa: BLE001 - say so plainly; the page shows DIY guidance instead
+            logger.exception("place search failed")
+            return Response(503, "application/json", json.dumps({"error": "Cleaner search is unavailable right now."}))
+        ddb.put({"PK": pk, "SK": sk, "providers": found, "ttl": ddb.ttl_in(1)})
+    return {"providers": found, "source": SOURCE, "radius_km": 30}
+
+
+@app.post("/sites/<site_id>/bookings")
+def request_booking(site_id):
+    from shared.cleaners import provider
+    site = _writable(site_id)
+    b = _body()
+    p = b.get("provider") or {}
+    if not isinstance(p, dict) or not str(p.get("id", "")).strip() or not str(p.get("name", "")).strip():
+        raise BadRequestError("provider with id and name is required")
+    p = {"id": str(p["id"])[:200], "name": str(p["name"])[:120], "phone": str(p.get("phone") or "")[:20] or None}
+    a = ddb.get(ddb.site_pk(site_id), f"ANALYSIS#{str(b.get('analysisId', ''))}") or {}
+    try:
+        caps.take_global("bookings")
+    except caps.CapExceeded:
+        return _too_many("booking requests")
+    return Response(201, "application/json", json.dumps(provider().request_booking(site_id, site, p, a), default=str))
 
 
 @logger.inject_lambda_context

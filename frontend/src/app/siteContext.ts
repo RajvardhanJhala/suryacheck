@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react'
 import type { Analysis, SiteView } from '../api'
 
 export type SiteState = {
-  base: '/app' | '/sample'
+  base: '/test'
   sample: boolean
   siteId: string | null
   view: SiteView | null

@@ -54,9 +54,17 @@ def peers_for(site, site_id):
     return out
 
 
+def _stage(site_id, analysis_id, stage):
+    """Real progress for the page: which step the job is on (and failed at, if it fails)."""
+    ddb.table().update_item(Key={"PK": ddb.site_pk(site_id), "SK": f"ANALYSIS#{analysis_id}"},
+                            UpdateExpression="SET stage = :s", ExpressionAttributeValues={":s": stage})
+
+
 def run_analysis(site_id, analysis_id, as_of=None, window_days=45):
     site = ddb.get(ddb.site_pk(site_id), "META")
+    _stage(site_id, analysis_id, "weather")
     daily = site_daily(site, site_id)
+    _stage(site_id, analysis_id, "compare")
     events = [{"date": e["SK"][6:16], "type": e["type"]} for e in ddb.query_prefix(ddb.site_pk(site_id), "EVENT#")]
     has_actual = daily.index[daily["kwh_actual"].notna()]
     if as_of is None:
@@ -65,6 +73,7 @@ def run_analysis(site_id, analysis_id, as_of=None, window_days=45):
 
     tariff, cost = site.get("tariff_inr", 6.0), site.get("cleaning_cost_inr", 200)
     perf = compute_performance(daily, as_of, events=events, window_days=window_days, tariff_inr=tariff)
+    _stage(site_id, analysis_id, "diagnose")
     peer_objs = peers_for(site, site_id)
     peers = peer_compare(perf, peer_objs, as_of)
     result = rules.score_causes(perf, peers, cleaning_cost_inr=cost)
@@ -85,7 +94,7 @@ def run_analysis(site_id, analysis_id, as_of=None, window_days=45):
     action = result["allowed_actions"][candidates[0]][0]
     analysis = {
         "PK": ddb.site_pk(site_id), "SK": f"ANALYSIS#{analysis_id}",
-        "status": "DONE", "as_of": perf.as_of, "window_days": window_days,
+        "status": "DONE", "stage": "done", "as_of": perf.as_of, "window_days": window_days,
         "verdict": verdict, "verdict_source": "code",
         "tie_candidates": result["tie_candidates"],
         "allowed_actions": result["allowed_actions"],

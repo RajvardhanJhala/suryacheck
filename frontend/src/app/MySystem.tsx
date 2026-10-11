@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router'
 import { api } from '../api'
 import { usePageMeta } from '../lib/seo'
 import { Button, Card, Field, Notice } from '../ui/primitives'
@@ -8,8 +7,6 @@ import { Screen } from './States'
 
 function SystemForm() {
   const { view, sample, siteId, setSiteId, reload } = useSite()
-  const [params] = useSearchParams()
-  const nav = useNavigate()
   const s = view?.site
   const [f, setF] = useState({
     label: s?.label ?? 'My roof', lat: String(s?.lat ?? ''), lon: String(s?.lon ?? ''), capacity_kwp: String(s?.capacity_kwp ?? '3'),
@@ -35,16 +32,14 @@ function SystemForm() {
         installer_phone: f.installer_phone || null, language: f.language as 'en' | 'hi', notify_email: f.notify_email,
       }
       const r = siteId ? await api.updateSite(siteId, body) : await api.createSite(body)
-      if (!siteId) { setSiteId(r.siteId); nav('/app/check') } else { await reload(); setMsg({ tone: 'clean', text: 'Saved.' }) }
+      if (!siteId) setSiteId(r.siteId)
+      await reload(); setMsg({ tone: 'clean', text: 'Saved. These defaults apply to your next test.' })
     } catch (x) { setMsg({ tone: 'fault', text: (x as Error).message }) } finally { setBusy(false) }
   }
 
-  const welcome = params.get('welcome') && !siteId
   return (
     <>
-      <header className="screen-head"><div><p className="eyebrow">Settings</p><h1>{welcome ? 'Set up your roof' : 'My system'}</h1></div></header>
-      {welcome && <Notice tone="info" title="One minute of setup">We need where your roof is (for its sunshine) and its size. Everything else has sensible defaults.</Notice>}
-      {sample && <Notice tone="info" title="Sample system settings are read-only" />}
+      <header className="screen-head"><div><h1>Settings</h1><p className="muted">Optional. Tests work without any of this.</p></div></header>
       <form onSubmit={save} className="settings-grid">
         <fieldset disabled={sample || busy}>
           <Card>
@@ -69,22 +64,17 @@ function SystemForm() {
             <Field id="tariff" label="Electricity rate (₹ per unit)" inputMode="decimal" value={f.tariff_inr} onChange={set('tariff_inr')} />
             <Field id="clean" label="One cleaning costs (₹)" inputMode="decimal" value={f.cleaning_cost_inr} onChange={set('cleaning_cost_inr')} />
             <Field id="phone" label="Installer's WhatsApp number" inputMode="tel" placeholder="+91…" value={f.installer_phone} onChange={set('installer_phone')} />
-            <h2 className="h3">Preferences</h2>
-            <div className="field">
-              <label htmlFor="lang">Language for explanations</label>
-              <select id="lang" value={f.language} onChange={set('language')}><option value="en">English</option><option value="hi">हिंदी</option></select>
-            </div>
           </Card>
         </fieldset>
         {msg && <Notice tone={msg.tone} title={msg.text} />}
-        {!sample && <Button type="submit" disabled={busy}>{busy ? 'Saving…' : siteId ? 'Save changes' : 'Save and add my readings'}</Button>}
+        {!sample && <Button type="submit" disabled={busy}>{busy ? 'Saving…' : 'Save'}</Button>}
       </form>
     </>
   )
 }
 
 export default function MySystem() {
-  usePageMeta('My system')
+  usePageMeta('Settings')
   const { view } = useSite()
-  return <Screen title="My system" needsAnalysis={false}><SystemForm key={view?.siteId ?? 'new'} /></Screen>
+  return <Screen title="Settings" needsAnalysis={false}><SystemForm key={view?.siteId ?? 'new'} /></Screen>
 }
