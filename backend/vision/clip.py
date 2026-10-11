@@ -2,7 +2,7 @@
 
 Two heads over the same 512-d image embedding:
   kind:      panel / inverter / meter / screenshot / other   (routes the evidence)
-  condition: clean / dusty / bird_droppings / damaged / shaded (only for panel photos)
+  condition: clean / dirty (trained linear probe; meaningful only for panel photos)
 
 Each head is either zero-shot (cosine similarity to text-prompt embeddings) or, when
 `heads.json` holds trained weights, a linear probe on the same embedding. Pure numpy +
@@ -78,8 +78,6 @@ def classify_bytes(data):
     e = embed([Image.open(io.BytesIO(data))])[0]
     kind = head_probs(e, heads["kind"])
     top_kind = max(kind, key=kind.get)
-    out = {"kind": top_kind, "kind_probs": kind, "kind_method": heads["kind"]["method"]}
-    if top_kind == "panel":
-        cond = head_probs(e, heads["condition"])
-        out.update(condition=max(cond, key=cond.get), condition_probs=cond, condition_method=heads["condition"]["method"])
-    return out
+    cond = head_probs(e, heads["condition"])       # always: the user may say "it's my panels" when kind is unsure
+    return {"kind": top_kind, "kind_probs": kind, "kind_method": heads["kind"]["method"],
+            "condition": max(cond, key=cond.get), "condition_probs": cond, "condition_method": heads["condition"]["method"]}

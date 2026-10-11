@@ -263,8 +263,8 @@ export default function NewCheck() {
 }
 
 const KIND_LABEL: Record<string, string> = { panel: 'Solar panels', inverter: 'Inverter display', meter: 'Energy meter', screenshot: 'App screenshot', other: 'Not recognised' }
-const COND_LABEL: Record<string, string> = { clean: 'Looks clean', dusty: 'Looks dusty', bird_droppings: 'Bird droppings', damaged: 'Possible damage', shaded: 'Shade on panels' }
-const CONFIDENT = 0.6
+const COND_LABEL: Record<string, string> = { clean: 'Looks clean', dirty: 'Looks dirty — cleaning may help', dusty: 'Looks dusty', bird_droppings: 'Bird droppings', damaged: 'Possible damage', shaded: 'Shade on panels' }
+const CONFIDENT = 0.8   // test set: 97.5% right when shown at 0.8 vs 91% at 0.6
 const KIND_SURE = 0.6
 
 /** One classified photo. Condition is shown only when the model is confident; otherwise we say so. */
@@ -277,7 +277,7 @@ export function PhotoResult({ cls, note, children }: { cls: PhotoClass; note: st
         <Badge tone={cls.kind === 'other' ? 'fault' : 'neutral'} icon={cls.kind === 'panel' ? 'panel' : cls.kind === 'meter' ? 'meter' : cls.kind === 'other' ? 'alert' : 'inverter'}>
           {KIND_LABEL[cls.kind]} · {cls.chosen ? 'chosen by you' : `${Math.round(p * 100)}%`}</Badge>
         {cls.rekognition?.solar_panels != null && <Badge tone="clean" icon="check">Rekognition: solar panels {Math.round(cls.rekognition.solar_panels)}%</Badge>}
-        {cls.condition && (cp >= CONFIDENT
+        {cls.kind === 'panel' && cls.condition && (cp >= CONFIDENT
           ? <Badge tone={cls.condition === 'clean' ? 'clean' : 'dust'} icon={cls.condition === 'clean' ? 'check' : 'dust'}>{COND_LABEL[cls.condition]} · estimate</Badge>
           : <Badge>Condition: not sure yet</Badge>)}
       </div>

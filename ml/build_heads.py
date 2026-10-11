@@ -18,7 +18,8 @@ CLIP = os.path.join(ROOT, "ml", "models", "clip")
 PROMPTS = {
     "kind": {
         "panel": ["a photo of solar panels", "a photo of a rooftop solar panel array", "a close-up photo of a solar panel",
-                  "a photo of photovoltaic modules on a roof"],
+                  "a photo of photovoltaic modules on a roof", "a photo of a dusty dirty solar panel",
+                  "a solar panel with bird droppings on it"],
         "inverter": ["a photo of a solar inverter display", "a photo of an inverter screen showing energy in kWh",
                      "a photo of a solar inverter mounted on a wall", "a photo of a small LCD screen on an electrical box"],
         "meter": ["a photo of an electricity meter", "a photo of a digital energy meter display",
