@@ -8,6 +8,7 @@ export default function CameraCapture({ onCapture, busy, hint, done }: {
 }) {
   const video = useRef<HTMLVideoElement>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const uploadRef = useRef<HTMLInputElement>(null)     // no capture attribute: phones offer the gallery
   const [stream, setStream] = useState<MediaStream | null>(null)
   const [denied, setDenied] = useState(false)
 
@@ -44,11 +45,16 @@ export default function CameraCapture({ onCapture, busy, hint, done }: {
         </div>
       )}
       {denied && <p className="field-hint">Live camera unavailable, so your phone's camera or a photo will be used.</p>}
-      <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden
-        onChange={(e) => { const f = e.target.files?.[0]; if (f) onCapture(f); e.target.value = '' }} />
-      {!done && (live
-        ? <Button icon="camera" onClick={snap} disabled={busy}>{busy ? 'Checking…' : 'Take photo'}</Button>
-        : <Button variant="secondary" icon="camera" onClick={start} disabled={busy}>Open camera</Button>)}
+      {[fileRef, uploadRef].map((ref, i) => (
+        <input key={i} ref={ref} type="file" accept="image/*" hidden {...(i === 0 ? { capture: 'environment' } : {})}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) onCapture(f); e.target.value = '' }} />
+      ))}
+      {!done && <div className="row">
+        {live
+          ? <Button icon="camera" onClick={snap} disabled={busy}>{busy ? 'Checking…' : 'Take photo'}</Button>
+          : <Button variant="secondary" icon="camera" onClick={start} disabled={busy}>Open camera</Button>}
+        <Button variant="ghost" icon="upload" onClick={() => uploadRef.current?.click()} disabled={busy}>Upload</Button>
+      </div>}
     </div>
   )
 }
