@@ -63,6 +63,7 @@ export type Analysis = {
   monthly_loss_inr: number; window_loss_inr: number; evidence: string[]; recheck_days: number | null
   explanation: { headline: string; why: string; what_to_do: string }; explanation_source: string
   series: SeriesPoint[]; peers: { n_peers: number }; peers_simulated: boolean
+  latest_day?: { date: string; actual: number; expected: number; loss_kwh: number; loss_inr: number; cloudy: boolean } | null
   performance: Performance; scores: Record<string, number>
 }
 

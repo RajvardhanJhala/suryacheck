@@ -267,7 +267,7 @@ export default function TestRoof() {
 
       <p className="muted small">The inverter reading is required. Meter and panel photos make the result stronger.</p>
 
-      <Capture n={1} icon="inverter" title="Inverter reading" line="A screenshot of your inverter app's daily list works best: one image gives many days." card={inv}>
+      <Capture n={1} icon="inverter" title="Inverter reading" line="Today's or yesterday's units are enough. Optional: a screenshot of the app's daily list adds more days." card={inv}>
         {chips.length > 0 && <>
           <ul className="chips" aria-label="Daily units read from your image">
             {shown.map((c) => (

@@ -136,12 +136,40 @@ def test_no_neighbours_still_finds_soiling():
     assert r["verdict_code"] == rules.SOILING
 
 
-def test_insufficient_data():
+def _one_day(exp, baseline, clear=True):
+    """A site with a single reading: the latest clear (or cloudy) day before AS_OF."""
+    site = make_site(exp, seed=14, baseline=baseline)
+    day = site.loc[(site["low_conf"] != clear) & (site.index <= AS_OF)].index[-1]
+    site.loc[site.index != day, "kwh_actual"] = float("nan")
+    return site, day
+
+
+def test_one_clear_day_at_full_output_is_healthy():
     exp = expected()
-    site = make_site(exp, seed=14)
-    site.loc[site.index < "2026-10-05", "kwh_actual"] = float("nan")
-    _, r = diagnose(site, exp)
-    assert r["verdict_code"] == rules.INSUFFICIENT
+    site, day = _one_day(exp, baseline=0.99)
+    perf = compute_performance(site, day)
+    r = rules.score_causes(perf, peer_compare(perf, [], day))
+    assert perf.hc_days == 1 and r["verdict_code"] == rules.HEALTHY
+
+
+def test_one_low_day_reports_the_loss_but_names_no_cause():
+    exp = expected()
+    site, day = _one_day(exp, baseline=0.8)
+    perf = compute_performance(site, day)
+    r = rules.score_causes(perf, peer_compare(perf, [], day))
+    assert r["verdict_code"] == rules.BELOW
+    assert r["allowed_actions"][rules.BELOW] == ["ADD_DATA"]        # no cleaning or messaging from one day
+    assert r["monthly_loss_inr"] > 0
+
+
+def test_only_cloudy_days_or_no_data_is_insufficient():
+    exp = expected()
+    site, day = _one_day(exp, baseline=0.8, clear=False)
+    perf = compute_performance(site, day)
+    assert rules.score_causes(perf, peer_compare(perf, [], day))["verdict_code"] == rules.INSUFFICIENT
+    site.loc[:, "kwh_actual"] = float("nan")
+    perf = compute_performance(site, AS_OF)
+    assert rules.score_causes(perf, peer_compare(perf, [], AS_OF))["verdict_code"] == rules.INSUFFICIENT
 
 
 def test_small_loss_waits_instead_of_cleaning():

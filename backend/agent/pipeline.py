@@ -89,6 +89,16 @@ def run_analysis(site_id, analysis_id, as_of=None, window_days=45):
         "peer_pi_norm": peers["peer_median_by_day"].get(d.strftime("%Y-%m-%d")),
     } for d, r in win.iterrows()]
 
+    # The most recent day with a reading: what it made, what the sunshine allowed, and the money gap.
+    days = win.loc[win["kwh_actual"].notna()]
+    latest = None
+    if len(days):
+        d, r = days.index[-1], days.iloc[-1]
+        allowed = float(r.kwh_expected * perf.baseline_pi)
+        lost = max(0.0, allowed - float(r.kwh_actual))
+        latest = {"date": d.strftime("%Y-%m-%d"), "actual": round(float(r.kwh_actual), 2), "expected": round(allowed, 2),
+                  "loss_kwh": round(lost, 2), "loss_inr": round(lost * tariff, 0), "cloudy": bool(r.low_conf)}
+
     verdict = result["verdict_code"]
     candidates = result["tie_candidates"] or [verdict]
     action = result["allowed_actions"][candidates[0]][0]
@@ -107,7 +117,7 @@ def run_analysis(site_id, analysis_id, as_of=None, window_days=45):
         "performance": {k: v for k, v in perf.to_dict().items() if k != "pi_norm"},
         "peers": {k: v for k, v in peers.items() if k != "peer_median_by_day"},
         "peers_simulated": any(p.simulated for p in peer_objs),
-        "series": series, "narrative": None, "finished_at": datetime.now(IST).isoformat(),
+        "series": series, "latest_day": latest, "narrative": None, "finished_at": datetime.now(IST).isoformat(),
     }
     ddb.put(analysis)
 

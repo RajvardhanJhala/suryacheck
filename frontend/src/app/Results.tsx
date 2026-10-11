@@ -3,7 +3,7 @@ import { Area, Bar, CartesianGrid, ComposedChart, Legend, Line, LineChart, Refer
 import { api, type Action, type Analysis, type SiteView } from '../api'
 import { tintFavicon } from '../lib/favicon'
 import { VERDICT } from '../lib/i18n'
-import { DUSTY, LOSS_LABEL, verdictSentence } from '../lib/verdict'
+import { DUSTY, isQuick, LOSS_LABEL, verdictSentence } from '../lib/verdict'
 import { cumulative, inputsFromAnalysis, recoveredPerCleaning } from '../lib/money'
 import { ArcGauge } from '../ui/arc'
 import { axis, grid, legend, shortDate, tooltip } from '../ui/charts'
@@ -86,6 +86,8 @@ export default function Results({ view, analysis: a, analysisId, sample, onEdit,
   const v = VERDICT[a.verdict] ?? VERDICT.UNEXPLAINED
   const pr = a.performance.med3_latest
   const dusty = DUSTY.includes(a.verdict)
+  const quick = isQuick(a)      // 1-6 clear days: no dust rate yet, so no projection
+  const day = a.latest_day
   const tariff = view.site.tariff_inr, cost = view.site.cleaning_cost_inr
   const inp = inputsFromAnalysis(a, tariff, cost)
   const year = cumulative(inp, null)[364]
@@ -139,7 +141,7 @@ export default function Results({ view, analysis: a, analysisId, sample, onEdit,
     ? <a className="btn btn-primary" href="#cleaners"><Icon name="droplet" size={18} />Get it cleaned</a>
     : (a.verdict === 'FAULT' || a.verdict === 'INVERTER_TRIP') && !sample
       ? <Button icon="chat" disabled={busy} onClick={() => act('MESSAGE_INSTALLER')}>Send the evidence to my installer</Button>
-      : a.verdict === 'INSUFFICIENT_DATA' && onEdit ? <Button icon="plus" onClick={onEdit}>Add more days</Button> : null
+      : a.verdict === 'INSUFFICIENT_DATA' && onEdit ? <Button icon="plus" onClick={onEdit}>Add a sunny day's reading</Button> : null
 
   return (
     <div className="results">
@@ -150,15 +152,22 @@ export default function Results({ view, analysis: a, analysisId, sample, onEdit,
           <h1 id="verdict-word" className={`verdict-word is-${v.tone}`}><Icon name={TONE_ICON[v.tone]} size={28} />{v.en}</h1>
           <p className="verdict-line">{verdictSentence(a)}</p>
         </div>
-        {a.monthly_loss_inr > 0 && (
+        {quick && day && day.loss_inr > 0 && (
+          <dl className="money-row">
+            <div><dt>Lost on {shortDate(day.date)}</dt><dd><Reading value={day.loss_inr} prefix="₹" tone="dust" /></dd><dd className="muted small">{day.loss_kwh} kWh below what the sun allowed</dd></div>
+            <div><dt>Per month</dt><dd><Reading value={a.monthly_loss_inr} prefix="₹" tone="dust" /></dd><dd className="muted small">if every day were like this</dd></div>
+          </dl>
+        )}
+        {!quick && a.monthly_loss_inr > 0 && (
           <dl className="money-row">
             <div><dt>Lost this month</dt><dd><Reading value={a.monthly_loss_inr} prefix="₹" tone="dust" /></dd><dd className="muted small">at today's rate</dd></div>
             <div><dt>Next 12 months</dt><dd><Reading value={year} prefix="₹" tone="dust" /></dd><dd className="muted small">if left alone</dd></div>
             {dusty && <div><dt>Recovered per cleaning</dt><dd><Reading value={recovered} prefix="₹" tone="clean" /></dd><dd className="muted small">over the next year</dd></div>}
           </dl>
         )}
-        {a.monthly_loss_inr > 0 && <p className="muted small loss-def">{LOSS_LABEL} (₹{tariff}/unit).</p>}
+        {a.monthly_loss_inr > 0 && <p className="muted small loss-def">{LOSS_LABEL} (₹{tariff}/unit).{quick ? ` Quick check from ${a.performance.hc_days} clear day${a.performance.hc_days > 1 ? 's' : ''}; your normal is the physics estimate until you add more.` : ''}</p>}
         {primary && <div className="verdict-action">{primary}</div>}
+        {quick && a.verdict !== 'INSUFFICIENT_DATA' && onEdit && <button className="link-btn" onClick={onEdit}>Optional: add more days for a firmer answer</button>}
         {err && <Notice tone="fault" title={err} />}
       </section>
 
@@ -199,7 +208,7 @@ export default function Results({ view, analysis: a, analysisId, sample, onEdit,
           <p className="muted small">Visual estimate. The verdict comes from your measured output.</p>
         </Section>
 
-        {a.monthly_loss_inr > 0 && <Section title="Money over 12 months" summary={`${inr(year)} if left`} force={printing}>
+        {!quick && a.monthly_loss_inr > 0 && <Section title="Money over 12 months" summary={`${inr(year)} if left`} force={printing}>
           <MoneyYear a={a} tariff={tariff} cost={cost} />
         </Section>}
 
@@ -226,7 +235,7 @@ export default function Results({ view, analysis: a, analysisId, sample, onEdit,
         </Section>}
       </div>
 
-      {(dusty || a.verdict === 'UNEXPLAINED') && <Cleaners view={view} analysis={a} analysisId={analysisId} sample={sample} />}
+      {(dusty || a.verdict === 'UNEXPLAINED' || a.verdict === 'BELOW_EXPECTED') && <Cleaners view={view} analysis={a} analysisId={analysisId} sample={sample} />}
 
       <div className="report-actions no-print">
         <Button variant="secondary" icon="globe" onClick={share}>Save this report</Button>

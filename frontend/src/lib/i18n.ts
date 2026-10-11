@@ -8,5 +8,6 @@ export const VERDICT: Record<string, { en: string; hi: string; tone: 'dust' | 'f
   STEADY_LOSS: { en: 'Steady loss', hi: 'लगातार नुकसान', tone: 'dust' },
   UNEXPLAINED: { en: 'Unclear', hi: 'कारण अस्पष्ट', tone: 'neutral' },
   HEALTHY: { en: 'Healthy', hi: 'ठीक है', tone: 'clean' },
+  BELOW_EXPECTED: { en: 'Below expected', hi: 'अपेक्षा से कम', tone: 'dust' },
   INSUFFICIENT_DATA: { en: 'Need more data', hi: 'और डेटा चाहिए', tone: 'neutral' },
 }

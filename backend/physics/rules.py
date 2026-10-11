@@ -9,6 +9,7 @@ HEALTHY_MED3 = 0.92
 TRIP, FAULT, SOILING, WEATHER, PERSISTENT_LOW, STEADY_LOSS = (
     "INVERTER_TRIP", "FAULT", "SOILING", "WEATHER", "PERSISTENT_LOW", "STEADY_LOSS")
 HEALTHY, UNEXPLAINED, INSUFFICIENT = "HEALTHY", "UNEXPLAINED", "INSUFFICIENT_DATA"
+BELOW = "BELOW_EXPECTED"       # quick check (1-6 clear days): below what the sunshine allowed, cause not yet known
 
 
 def _d(iso):
@@ -30,6 +31,7 @@ ACTIONS = {
     WEATHER: ["NONE"],
     HEALTHY: ["NONE"],
     INSUFFICIENT: ["ADD_DATA"],
+    BELOW: ["ADD_DATA"],
 }
 RECHECK_DAYS = {SOILING: 5, FAULT: 7, TRIP: 2, STEADY_LOSS: 5, UNEXPLAINED: 7}
 
@@ -56,9 +58,11 @@ def score_causes(perf, peers, cleaning_cost_inr=200.0):
     scores, evidence = {}, []
     n_peers = peers.get("n_peers", 0)
 
-    if perf.hc_days < MIN_HC_DAYS:
-        return _result(INSUFFICIENT, {}, [], [f"Only {perf.hc_days} clear days of data (need {MIN_HC_DAYS})."],
+    if perf.hc_days == 0:
+        return _result(INSUFFICIENT, {}, [], ["No clear day among your readings yet: cloudy days can't be judged."],
                        perf, cleaning_cost_inr)
+    if perf.hc_days < MIN_HC_DAYS:
+        return _quick_check(perf, cleaning_cost_inr)
 
     if perf.trip_days:
         grid = set(perf.trip_days) & set(peers.get("peer_trip_like_days", []))
@@ -110,6 +114,21 @@ def score_causes(perf, peers, cleaning_cost_inr=200.0):
         return _result(verdict, scores, [], evidence, perf, cleaning_cost_inr)
     ties = ranked[:2] if len(ranked) > 1 and scores[ranked[0]] - scores[ranked[1]] <= TIE_BAND else []
     return _result(ranked[0], scores, ties, evidence, perf, cleaning_cost_inr)
+
+
+def _quick_check(perf, cleaning_cost_inr):
+    """Fewer than 7 clear days: no history, so 'normal' is the physics estimate itself. Says how far below
+    the sunshine the output was and what that cost, but never names dust or a fault from so little data."""
+    n, pr = perf.hc_days, perf.med3_latest
+    days = f"{n} clear day{'s' if n > 1 else ''}"
+    if perf.trip_days:
+        return _result(TRIP, {TRIP: 0.8}, [], [f"Near-zero output on {', '.join(_d(d) for d in perf.trip_days)}."],
+                       perf, cleaning_cost_inr)
+    if pr is not None and pr >= HEALTHY_MED3:
+        return _result(HEALTHY, {}, [], [f"Quick check on {days}: {min(pr, 1):.0%} of what the sunshine allowed."],
+                       perf, cleaning_cost_inr)
+    return _result(BELOW, {}, [], [f"Quick check on {days}: {pr:.0%} of what the sunshine allowed. "
+                                   f"Add more days to tell dust from a fault."], perf, cleaning_cost_inr)
 
 
 def _result(verdict, scores, ties, evidence, perf, cleaning_cost_inr):

@@ -11,7 +11,7 @@ ACTION_TEXT = {
                        "especially between 10 am and 3 pm.",
     "VERIFY_CAPACITY": "Confirm the system size on your installation papers; the numbers suggest it may differ.",
     "NONE": "Nothing to do.",
-    "ADD_DATA": "Add more daily readings (a monthly screenshot or CSV works best).",
+    "ADD_DATA": "Optional: add more days (a screenshot of the daily list) to tell dust from a fault.",
 }
 
 HEADLINE = {
@@ -24,6 +24,7 @@ HEADLINE = {
     "UNEXPLAINED": "Output is lower than expected and the cause isn't clear yet.",
     "HEALTHY": "Your panels are making what the sunshine allowed.",
     "INSUFFICIENT_DATA": "Not enough clear days of data yet.",
+    "BELOW_EXPECTED": "Your panels made less than the sunshine allowed.",
 }
 
 

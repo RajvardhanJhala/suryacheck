@@ -56,6 +56,7 @@ createRoot(document.getElementById('root')!).render(
               <Route path="history" element={<History />} />
               <Route path="settings" element={<MySystem />} />
             </Route>
+            <Route path="app" element={<Navigate to="/" replace />} />
             <Route path="app/history" element={<Navigate to="/history" replace />} />
             <Route path="app/settings" element={<Navigate to="/settings" replace />} />
             <Route path="app/*" element={<Navigate to="/test" replace />} />
