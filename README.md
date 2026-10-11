@@ -6,6 +6,7 @@
 · [Try a sample roof](https://main.d2tnx3nqu0sqfs.amplifyapp.com/test?sample=demohemant01) (no photos needed)
 · Demo video: *link coming soon*
 · [Write-up](docs/WRITEUP.md)
+· [Blog: how we built it](https://builder.aws.com/post/3KY3vP3Q5R32HQ6jQHdM1ht1PBW_p/how-we-built-suryacheck-for-environmental-hacks-2026) (AWS Builder Center)
 
 Built for **Environmental Hacks 2026, Waste & Energy track**. Free to use: no sign-up, no app install.
 
