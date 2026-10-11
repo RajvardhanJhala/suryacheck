@@ -236,8 +236,8 @@ def put_readings(site_id):
     site = _writable(site_id)
     b = _body()
     rows, source = b.get("rows") or [], b.get("source", "manual")
-    if source not in ("screenshot", "csv", "manual"):
-        raise BadRequestError("source must be screenshot, csv or manual")
+    if source not in ("screenshot", "photo", "csv", "manual"):
+        raise BadRequestError("source must be screenshot, photo, csv or manual")
     if not isinstance(rows, list) or not 1 <= len(rows) <= 120:
         raise BadRequestError("rows must be a list of 1-120 {date, kwh}")
     max_kwh, today = site["capacity_kwp"] * 7.5, _today_ist()

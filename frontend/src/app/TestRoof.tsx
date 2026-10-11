@@ -92,7 +92,8 @@ export default function TestRoof() {
   }, [site, sample])
 
   const fresh = !sample && !loading && !analysis      // nothing to show yet: go straight to the inputs
-  const inputs = !sample && (editing || fresh)
+  const started = editing || chips.length > 0 || !!inv || !!meter || panels.length > 0
+  const inputs = !sample && (started || fresh)
 
   // Ask the browser for the roof's position when the inputs are first shown and none is saved.
   useEffect(() => {
@@ -144,7 +145,13 @@ export default function TestRoof() {
     try {
       const sid = await ensureSite(file)
       const keys = await api.upload(sid, await prepareTiles(file), kind)
-      const ex = await api.extract(sid, keys, kind)
+      // A phone photo is often of the app's daily list, so read it as a list first; fall back to the
+      // single "Today" number on an inverter display only when no list is found.
+      let ex = await api.extract(sid, keys, 'inverter_screenshot')
+      if (ex.rows.length < 2 && kind === 'inverter_photo') {
+        const today = await api.extract(sid, keys, 'inverter_photo')
+        if (today.rows.length) ex = { ...today, rows: [...ex.rows.filter((r) => !today.rows.some((t) => t.date === r.date)), ...today.rows] }
+      }
       setWarn(ex.warnings)
       if (!ex.rows.length) throw new Error("Couldn't find daily units in that image. Type them below, or upload a screenshot of the app's daily list.")
       setChips((c) => mergeChips(c, ex.rows)); setInv((c) => c && { ...c, status: 'done' })
@@ -192,7 +199,7 @@ export default function TestRoof() {
       if (a.status !== 'DONE') throw new Error(a.stage === 'weather'
         ? "Couldn't fetch the sunshine for your roof from Open-Meteo. Try again in a minute." : `The check failed: ${a.error ?? 'unknown error'}.`)
       await reload()
-      setEditing(false)
+      setEditing(false); setChips([]); setInv(null); setMeter(null); setMeterText(''); setPanels([])     // show the result
       top.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     } catch (e) { setErr((e as Error).message) } finally { setRunning(null) }
   }
@@ -202,7 +209,8 @@ export default function TestRoof() {
     setInv(null); setMeter(null); setPanels([]); setEditing(true)
   }
 
-  if (loading && !editing && !chips.length) return <div className="center-screen"><ArcLoader label="Loading your roof" /></div>
+  // Full-page loader only before anything has been added: creating the site on the first photo reloads it.
+  if (loading && !started) return <div className="center-screen"><ArcLoader label="Loading your roof" /></div>
   if (error && !inputs) return (
     <div className="state"><Notice tone="fault" title="Couldn't load this roof">{error}</Notice>
       <Button variant="secondary" icon="history" onClick={reload}>Try again</Button></div>
