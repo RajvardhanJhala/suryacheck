@@ -1,28 +1,44 @@
 // The sun-path arc: sunrise (left) -> noon (top) -> sunset (right). One geometry, reused
 // for the logo, the performance gauge, the loader, section dividers and the 404 page.
 import { useEffect, useState } from 'react'
+import { sunFraction } from '../lib/sun'
 import { arcPath, arcPoint, reducedMotion } from './geometry'
 
-/** Logo mark: horizon, dial ticks, the sun's path, and the sun at mid-morning. */
-export function LogoMark({ size = 32 }: { size?: number }) {
-  const sun = arcPoint(16, 22, 11, 0.68)
+/** Logo mark: the sun's path as a gauge, the sun as its needle tip (same geometry as scripts/make_icons.py). */
+export function LogoMark({ size = 32, sun: t = 0.68 }: { size?: number; sun?: number }) {
+  const sun = arcPoint(16, 23, 11, t)
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden="true">
-      <path d={arcPath(16, 22, 11)} fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-      {[0.25, 0.5, 0.75].map((t) => {
-        const a = arcPoint(16, 22, 7.5, t), b = arcPoint(16, 22, 9, t)
-        return <line key={t} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-      })}
-      <line x1="3" y1="22" x2="29" y2="22" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-      <circle cx={sun.x} cy={sun.y} r="3.6" fill="var(--sun)" />
+      <path d={arcPath(16, 23, 11)} fill="none" stroke="var(--line)" strokeWidth="2.6" strokeLinecap="round" />
+      <path d={`M 5 23 A 11 11 0 0 1 ${sun.x} ${sun.y}`} fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+      <line x1="2.5" y1="23" x2="29.5" y2="23" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+      <circle cx={sun.x} cy={sun.y} r="3.9" fill="var(--sun)" stroke="var(--surface)" strokeWidth="1.4" />
     </svg>
   )
 }
 
-export function Logo({ size = 28 }: { size?: number }) {
+/** The sun's real position over Ahmedabad: sweeps from sunrise to now on load (ease-out, along the arc), then follows the clock. */
+function useLiveSun(live: boolean) {
+  const [t, setT] = useState(live && !reducedMotion() ? 0 : live ? sunFraction() : 0.68)
+  useEffect(() => {
+    if (!live) return
+    let raf = 0
+    const target = sunFraction(), t0 = performance.now()
+    if (!reducedMotion()) {
+      const step = (now: number) => { const k = Math.min(1, (now - t0) / 600); setT(target * (1 - Math.pow(1 - k, 3))); if (k < 1) raf = requestAnimationFrame(step) }
+      raf = requestAnimationFrame(step)
+    }
+    const id = setInterval(() => setT(sunFraction()), 60000)
+    return () => { cancelAnimationFrame(raf); clearInterval(id) }
+  }, [live])
+  return t
+}
+
+export function Logo({ size = 28, live = false }: { size?: number; live?: boolean }) {
+  const t = useLiveSun(live)
   return (
     <span className="logo" style={{ fontSize: size * 0.72 }}>
-      <LogoMark size={size} />
+      <LogoMark size={size} sun={t} />
       <span>Surya<b>Check</b></span>
     </span>
   )

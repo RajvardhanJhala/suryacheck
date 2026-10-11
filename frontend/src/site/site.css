@@ -10,13 +10,6 @@
 .skip:focus { left: var(--s-2); }
 .linklike { background: none; border: 0; padding: 0; font: inherit; color: var(--sun-ink); text-decoration: underline; cursor: pointer; min-height: var(--tap); }
 
-/* announcement strip (after rivermark.ai / effortless) */
-.announce { margin: 0; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--s-2); padding: var(--s-2) var(--s-4);
-  font-size: var(--fs-sm); color: var(--ink-2); background: var(--sunken); text-align: center; }
-.announce a { display: inline-flex; align-items: center; gap: var(--s-1); font-weight: 600; }
-.announce-tag { font: 600 var(--fs-xs)/1 var(--font-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--paper);
-  background: var(--ink); border-radius: var(--r-pill); padding: 3px var(--s-2); }
-
 /* nav: floating pill that sticks while you scroll (after heycubit.com) */
 .site-nav { max-width: 1160px; width: calc(100% - 2 * var(--s-4)); margin: var(--s-3) auto 0; padding: var(--s-2) var(--s-2) var(--s-2) var(--s-4);
   display: flex; align-items: center; justify-content: space-between; position: sticky; top: var(--s-3); z-index: 20;
@@ -46,18 +39,18 @@
 .hero-copy .row { margin-top: var(--s-5); }
 @media (min-width: 960px) { .hero { grid-template-columns: 1fr 1.05fr; padding-block: var(--s-8) var(--s-7); } }
 
-/* drag-the-dust */
-.dust-demo { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--s-4); box-shadow: var(--sh-2); }
-.dust-stage { position: relative; }
-.dust-stage svg { display: block; width: 100%; height: auto; border-radius: var(--r-md); }
-.dust-range { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; }
-.dust-stage:has(.dust-range:focus-visible) { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: var(--r-md); }
-.dust-layer { animation: settle 1.4s var(--ease) both; }
-@keyframes settle { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
-.dust-readout { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3) var(--s-4); margin-top: var(--s-4); }
-.dust-readout > div { display: grid; gap: var(--s-2); }
-.dust-hint { grid-column: 1 / -1; display: flex; gap: var(--s-2); align-items: flex-start; font-size: var(--fs-sm); margin: 0; }
-.dust-hint svg { flex: none; margin-top: 3px; }
+/* live dust panel (canvas) */
+.dust-demo { margin: 0; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--s-4); box-shadow: var(--sh-2); min-width: 0; }
+.dust-canvas { display: block; width: 100%; aspect-ratio: 400 / 220; border-radius: var(--r-md); cursor: none; touch-action: pan-y; }
+.dust-readout { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-3); margin-top: var(--s-4); }
+.dust-readout > div { display: grid; gap: var(--s-2); min-width: 0; }
+.dust-readout .eyebrow { font-size: .65rem; }
+.dust-caption { margin: var(--s-3) 0 0; font-weight: 600; min-height: 3em; }
+.dust-hint { margin: var(--s-1) 0 0; }
+.dust-pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); }
+.dust-pair figure { margin: 0; display: grid; gap: var(--s-2); }
+.dust-pair canvas { width: 100%; aspect-ratio: 400 / 220; border-radius: var(--r-md); }
+.dust-pair figcaption { font-size: var(--fs-sm); }
 
 /* two-tone headline: second clause softer (after rivermark.ai) */
 .h-soft { color: var(--ink-2); font-weight: 500; }
@@ -153,8 +146,6 @@
   border-radius: 50%; background: radial-gradient(closest-side, rgb(242 154 46 / .35), transparent); pointer-events: none; }
 .night-stars { position: absolute; inset: 0; width: 100%; height: 100%; fill: #f1eadc; }
 .night-stars circle { opacity: .55; }
-.night-stars .tw { animation: twinkle 3.2s ease-in-out calc(var(--k) * .8s) infinite alternate; }
-@keyframes twinkle { to { opacity: .1; } }
 .site:has(.night) .site-foot { margin-top: 0; border-top: 0; }
 .night-inner { position: relative; z-index: 1; max-width: 760px; }
 .night h2 { font-size: clamp(var(--fs-3xl), 5vw, var(--fs-5xl)); color: #f6efe2; }
@@ -214,3 +205,15 @@
   .topnav a.active { background: var(--sunken); color: var(--sun-ink); }
   .app-main { padding: var(--s-6) var(--s-5) var(--s-8); }
 }
+
+/* your-roof calculator */
+.calc { display: grid; gap: var(--s-4); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--s-5); }
+.calc-inputs { display: grid; gap: var(--s-3); }
+.calc-field { display: grid; gap: var(--s-1); }
+.calc-field label { display: flex; justify-content: space-between; gap: var(--s-3); font-weight: 600; }
+.calc-field input { width: 100%; accent-color: var(--sun); min-height: var(--tap); }
+.calc-out { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); }
+.calc-out > span { display: grid; gap: var(--s-2); padding: var(--s-3); background: var(--paper); border-radius: var(--r-md); }
+.calc .muted { margin: 0; }
+@media (min-width: 900px) { .calc { grid-template-columns: 1.2fr 1fr; align-items: center; } .calc .muted { grid-column: 1 / -1; } }
+.trust-note { grid-column: 1 / -1; margin: 0; }

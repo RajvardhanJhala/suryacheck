@@ -18,6 +18,10 @@ export const ASSUMPTIONS = [
   'A cleaning brings output back to your normal.',
 ]
 
+/** The soiling model: loss grows by `rate` per dry day from `start`, capped at LOSS_CAP. Used by every
+ *  projection here and by the landing page's dust panel, so the two can never disagree. */
+export const soilingAfter = (start: number, rate: number, days: number) => Math.min(LOSS_CAP, start + rate * days)
+
 const isMonsoon = (d: Date) => {
   const m = d.getMonth() + 1, day = d.getDate()
   return (m === 6 && day >= 15) || m === 7 || m === 8 || (m === 9 && day <= 15)
@@ -39,7 +43,7 @@ export function project(inp: MoneyInputs, cleanEvery: number | null): { months: 
     if (isMonsoon(d)) { loss = 0; sinceClean = 0 } else {
       if (cleanEvery !== null && sinceClean >= cleanEvery) { loss = 0; sinceClean = 0; row.cleanings++; row.costInr += inp.cleaningCost }
       row.lossInr += loss * inp.normalKwh * inp.tariff
-      loss = Math.min(LOSS_CAP, loss + inp.dustRate)
+      loss = soilingAfter(loss, inp.dustRate, 1)
       sinceClean++
     }
     months.set(key, row)
@@ -86,7 +90,7 @@ export function cumulative(inp: MoneyInputs, cleanOn: number | null): number[] {
     const d = new Date(start); d.setDate(start.getDate() + i)
     if (i === cleanOn) { loss = 0; total += inp.cleaningCost }
     if (isMonsoon(d)) loss = 0
-    else { total += loss * inp.normalKwh * inp.tariff; loss = Math.min(LOSS_CAP, loss + inp.dustRate) }
+    else { total += loss * inp.normalKwh * inp.tariff; loss = soilingAfter(loss, inp.dustRate, 1) }
     out.push(total)
   }
   return out

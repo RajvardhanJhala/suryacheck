@@ -8,17 +8,15 @@ export default function PublicLayout() {
   return (
     <div className="site">
       <a className="skip" href="#main">Skip to content</a>
-      <p className="announce"><span className="announce-tag">New</span> Read your inverter or meter with your phone camera.{' '}
-        <Link to="/test">Try it <Icon name="arrowRight" size={14} /></Link></p>
       <header className="site-nav">
-        <Link to="/" aria-label="SuryaCheck home"><Logo size={30} /></Link>
+        <Link to="/" aria-label="SuryaCheck home"><Logo size={30} live /></Link>
         <button className="btn btn-ghost nav-toggle" aria-expanded={open} aria-controls="site-menu" onClick={() => setOpen(!open)}>
           <Icon name={open ? 'close' : 'menu'} label={open ? 'Close menu' : 'Open menu'} />
         </button>
         <nav id="site-menu" className={open ? 'is-open' : ''} onClick={() => setOpen(false)}>
           <NavLink to="/how-it-works">How it works</NavLink>
           <NavLink to="/test?sample=demohemant01">Sample roof</NavLink>
-          <Link className="btn btn-primary" to="/test">Test your roof</Link>
+          <Link className="btn btn-secondary" to="/test">Test your roof</Link>
         </nav>
       </header>
       <main id="main"><Outlet /></main>

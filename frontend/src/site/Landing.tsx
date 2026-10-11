@@ -3,7 +3,9 @@ import { usePageMeta } from '../lib/seo'
 import { ArcDivider } from '../ui/arc'
 import { Icon, type IconName } from '../ui/icons'
 import CauseTabs from './CauseTabs'
-import DustDemo from './DustDemo'
+import DustPanel from './DustPanel'
+import RoofCalc from './RoofCalc'
+import { Reading } from '../ui/primitives'
 
 // Stacked status cards (after heycubit.github.io/effortless). Examples of SuryaCheck's own messages.
 const SIGNALS: { icon: IconName; tone: 'dust' | 'fault' | 'clean' | 'sun'; title: string; text: string; ring?: number; action: string }[] = [
@@ -38,7 +40,7 @@ export default function Landing() {
             <Link className="btn btn-secondary btn-orb" to="/test?sample=demohemant01"><span className="orb"><Icon name="chart" size={16} /></span>Try a sample roof</Link>
           </div>
         </div>
-        <DustDemo />
+        <DustPanel />
       </section>
 
       <div className="wrap"><ArcDivider /></div>
@@ -95,6 +97,12 @@ export default function Landing() {
         </ol>
       </section>
 
+      <section className="wrap section calc-section">
+        <p className="eyebrow">Your roof</p>
+        <h2>What dust costs a roof like yours <span className="h-soft">before you test it.</span></h2>
+        <RoofCalc />
+      </section>
+
       <section className="wrap section trust">
         <div>
           <p className="eyebrow">Why you can trust the number</p>
@@ -104,11 +112,11 @@ export default function Landing() {
           <Link to="/how-it-works">Read the full method and its limits <Icon name="arrowRight" size={16} /></Link>
         </div>
         <dl className="trust-facts">
-          <div><dt>Clean roofs read healthy</dt><dd className="reading md is-clean">99<small>%</small></dd></div>
-          <div><dt>Dusty roofs caught</dt><dd className="reading md is-dust">300<small>/300</small></dd></div>
-          <div><dt>String faults caught</dt><dd className="reading md">300<small>/300</small></dd></div>
-          <p className="muted small">Rule test on 300 simulated roofs with 3% daily noise. Real-world accuracy is still to be measured.</p>
+          <div><dt>Clean roofs read healthy</dt><dd><Reading value={99} unit="%" size="md" tone="clean" /></dd></div>
+          <div><dt>Dusty roofs caught</dt><dd><Reading value={300} unit="/300" size="md" tone="dust" /></dd></div>
+          <div><dt>String faults caught</dt><dd><Reading value={300} unit="/300" size="md" /></dd></div>
         </dl>
+        <p className="muted small trust-note">Rule test on 300 simulated roofs with 3% daily noise. Real-world accuracy is still to be measured.</p>
       </section>
 
       <section className="night">

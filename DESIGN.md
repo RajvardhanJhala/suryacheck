@@ -75,12 +75,23 @@ Never use the arc as pure decoration, and never draw the sun in any colour other
 - **Touch:** `--tap` is 44 px, the minimum height of anything you can tap.
 
 ## Motion
-Motion is calm and always has a purpose:
-- **Readings count up** once, when they scroll into view (900 ms, ease-out cubic).
+Motion is calm, follows curves like the sun's path, and always has a purpose. Durations are 300–600 ms
+with `--ease` (ease-out); there are no springs, bounces or decorative-only loops:
+- **Readings count up** once, when they scroll into view (900 ms, ease-out cubic), including the
+  landing trust stats.
 - **The gauge sweeps** to its value in 1.2 s.
-- **The dust overlay settles** in the landing demo.
+- **The logo's sun follows the real sun:** on load it sweeps from sunrise to the current time in
+  Ahmedabad (600 ms, along the arc), then updates every minute (`lib/sun.ts`, NOAA approximation).
+- **The landing dust panel** (`site/DustPanel.tsx`, one `<canvas>`) runs a 14 s loop. Over "Day 1–20
+  since last wash", dust builds at the report's own soiling rate (`soilingAfter` in `lib/money.ts`):
+  100% → 88% output and ₹0 → ₹311 a month. The loop ends alternately in rain or a squeegee
+  cleaning. Dragging the pointer or a finger over the panel pauses the loop and wipes like a cloth,
+  with live % and ₹; after 3 s idle the dust resettles. The dust uses a seeded PRNG with at most 600
+  particles, is devicePixelRatio-aware, and pauses off-screen.
 
-`prefers-reduced-motion` sets every duration to 0 and shows final values immediately.
+`prefers-reduced-motion` sets every duration to 0 and shows final values immediately; the dust panel
+becomes a static dusty-vs-clean pair. Web fonts use `font-display: optional`, so they never shift the
+layout.
 
 ## Icons
 There's one custom line family: a 24-unit grid, 1.75 stroke, round caps and joins, drawn in `currentColor` (`icons.tsx`). No emoji are used as icons. When an icon carries meaning it gets an `aria-label`; otherwise it's hidden from screen readers.
@@ -137,11 +148,19 @@ and emailed to `OpsEmail` when one is configured.
 - Spacing, radius and type come from the existing tokens only; no new colours.
 
 ## Icons and social images
-`python scripts/make_icons.py` generates, from the same mark geometry:
-- `favicon.svg`, `favicon.ico`, and 16 and 32 px PNGs;
+The mark is the sun's path drawn as a gauge, with the sun as the needle tip. Each size is drawn
+separately: **16 px** has only the arc and sun, with a heavy stroke; **32 px** adds the baseline;
+**180 px and up** has the full mark (track, filled arc, ticks, baseline). On a results page the tab's
+sun takes the verdict colour (`lib/favicon.ts`), and the title shows the performance, e.g.
+"88% · Dust · SuryaCheck".
+
+`python scripts/make_icons.py` generates:
+- `favicon.svg` (with a dark-mode variant inside the SVG), `favicon.ico` (16/32/48, each from its own
+  drawing), and 16 and 32 px PNGs;
+- `safari-pinned-tab.svg` (monochrome mask icon);
 - `apple-touch-icon` (180 px);
 - 192 and 512 px icons, plus a maskable 512 px icon;
-- `og.png` at 1200×630.
+- `og.png` at 1200×630, showing the gauge and a ₹ figure.
 
 These all go into `frontend/public`.
 

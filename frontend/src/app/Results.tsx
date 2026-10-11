@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Area, Bar, CartesianGrid, ComposedChart, Legend, Line, LineChart, ReferenceArea, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { api, type Action, type Analysis, type SiteView } from '../api'
+import { tintFavicon } from '../lib/favicon'
 import { VERDICT } from '../lib/i18n'
 import { DUSTY, LOSS_LABEL, verdictSentence } from '../lib/verdict'
 import { cumulative, inputsFromAnalysis, recoveredPerCleaning } from '../lib/money'
@@ -101,6 +102,8 @@ export default function Results({ view, analysis: a, analysisId, sample, onEdit,
     document.title = `${Math.round(pr * 100)}% · ${v.en} · SuryaCheck`
     return () => { document.title = prev }
   }, [pr, v.en])
+
+  useEffect(() => tintFavicon(v.tone), [v.tone])
 
   useEffect(() => {
     if (!printing) return
