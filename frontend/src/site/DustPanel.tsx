@@ -27,6 +27,11 @@ function particles(): P[] {
 }
 const PARTICLES = particles()
 
+// roundRect is missing on older phone browsers: fall back to square corners rather than throwing.
+function rrect(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  if (typeof c.roundRect === 'function') c.roundRect(x, y, w, h, r); else c.rect(x, y, w, h)
+}
+
 function offscreen(w: number, h: number) { const c = document.createElement('canvas'); c.width = w; c.height = h; return c }
 
 /** Draws one frame of the panel into a canvas sized to its CSS box (devicePixelRatio-aware). */
@@ -52,11 +57,11 @@ class Renderer {
     if (mask) this.mask.getContext('2d')!.drawImage(mask, 0, 0, this.mask.width, this.mask.height)
     const b = this.base.getContext('2d')!
     b.setTransform(this.scale, 0, 0, this.scale, 0, 0)
-    b.fillStyle = '#2b3640'; b.beginPath(); b.roundRect(0, 0, W, H, 10); b.fill()
+    b.fillStyle = '#2b3640'; b.beginPath(); rrect(b, 0, 0, W, H, 10); b.fill()
     const cols = 4, rows = 2, gap = 6, mw = (W - gap * (cols + 1)) / cols, mh = (H - gap * (rows + 1)) / rows
     for (let i = 0; i < cols * rows; i++) {
       const x = gap + (i % cols) * (mw + gap), y = gap + Math.floor(i / cols) * (mh + gap)
-      b.fillStyle = '#1f4a6b'; b.beginPath(); b.roundRect(x, y, mw, mh, 3); b.fill()
+      b.fillStyle = '#1f4a6b'; b.beginPath(); rrect(b, x, y, mw, mh, 3); b.fill()
       b.strokeStyle = '#3d6d91'; b.lineWidth = 0.8; b.beginPath()
       for (let k = 1; k < 6; k++) { b.moveTo(x + (mw * k) / 6, y); b.lineTo(x + (mw * k) / 6, y + mh) }
       for (let k = 1; k < 4; k++) { b.moveTo(x, y + (mh * k) / 4); b.lineTo(x + mw, y + (mh * k) / 4) }
@@ -85,7 +90,7 @@ class Renderer {
     if (ga > 0.01) {
       const grad = ctx.createLinearGradient(gx - 40, 0, gx + 40, H)
       grad.addColorStop(0, 'rgba(255,255,255,0)'); grad.addColorStop(0.5, `rgba(255,255,255,${ga})`); grad.addColorStop(1, 'rgba(255,255,255,0)')
-      ctx.save(); ctx.beginPath(); ctx.roundRect(0, 0, W, H, 10); ctx.clip(); ctx.fillStyle = grad
+      ctx.save(); ctx.beginPath(); rrect(ctx, 0, 0, W, H, 10); ctx.clip(); ctx.fillStyle = grad
       ctx.fillRect(sweep !== null ? 0 : gx - 60, 0, sweep !== null ? Math.max(0, gx) : 120, H); ctx.restore()
     }
     // Dust particles, drawn on their own layer so wiping can cut through them.
@@ -99,7 +104,7 @@ class Renderer {
     if (film > 0.005) {
       const fg = d.createLinearGradient(0, 0, 0, H)
       fg.addColorStop(0, `rgba(160, 128, 84, ${film * 0.7})`); fg.addColorStop(1, `rgba(160, 128, 84, ${film})`)   // heavier at the bottom edge
-      d.fillStyle = fg; d.beginPath(); d.roundRect(sweep ?? 0, 0, W - Math.max(0, sweep ?? 0), H, 10); d.fill()
+      d.fillStyle = fg; d.beginPath(); rrect(d, sweep ?? 0, 0, W - Math.max(0, sweep ?? 0), H, 10); d.fill()
     }
     for (const p of PARTICLES) {
       if (p.at > level) continue
@@ -170,7 +175,9 @@ export default function DustPanel() {
 
   useEffect(() => {
     if (still || !canvas.current) return
-    const el = canvas.current, r = new Renderer(el, ochre())
+    const el = canvas.current
+    let r: Renderer
+    try { r = new Renderer(el, ochre()) } catch { return }       // no canvas support: the landing page still works
     let t = 0, last = performance.now(), raf = 0, visible = false
     let wipe: { loss: number; covered: Set<number>; last: number } | null = null
     let cloth: { x: number; y: number } | null = null
@@ -189,6 +196,10 @@ export default function DustPanel() {
     }
 
     const frame = (now: number) => {
+      try { step(now) } catch { visible = false; raf = 0; return }     // stop the animation, never the page
+      raf = visible ? requestAnimationFrame(frame) : 0
+    }
+    const step = (now: number) => {
       const dt = Math.min(50, now - last); last = now
       if (wipe && now - wipe.last > IDLE_MS) { wipe = null; cloth = null; r.clearMask() }        // dust resettles, loop resumes
       if (!wipe) t += dt
@@ -198,7 +209,6 @@ export default function DustPanel() {
         const s: Scene = { ...base, phase: 'build', loss: wipe.loss * (1 - f) }
         r.draw({ ...s, loss: wipe.loss }, now, { cloth, wiping: true }); show(s, f)
       } else { r.draw(base, now); show(base) }
-      raf = visible ? requestAnimationFrame(frame) : 0
     }
     const start = () => { if (!raf && visible) { last = performance.now(); raf = requestAnimationFrame(frame) } }
 

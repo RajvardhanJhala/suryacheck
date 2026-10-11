@@ -11,7 +11,7 @@ export function tintFavicon(tone: string): () => void {
   if (colour) {
     fetch('/favicon.svg').then((r) => r.text()).then((svg) => {
       if (cancelled) return
-      const url = 'data:image/svg+xml,' + encodeURIComponent(svg.replaceAll(`fill="${SUN}"`, `fill="${colour}"`))
+      const url = 'data:image/svg+xml,' + encodeURIComponent(svg.split(`fill="${SUN}"`).join(`fill="${colour}"`))
       links.forEach((l) => { l.type = 'image/svg+xml'; l.href = url })
     }).catch(() => { /* keep the normal icon */ })
   }
